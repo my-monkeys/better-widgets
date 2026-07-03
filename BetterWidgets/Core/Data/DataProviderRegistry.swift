@@ -9,7 +9,10 @@ final class DataProviderRegistry {
     private let providersByType: [String: any DataProvider]
 
     init(providers: [any DataProvider]) {
-        providersByType = Dictionary(uniqueKeysWithValues: providers.map { (Swift.type(of: $0).type, $0) })
+        // If two providers share the same `type`, the first one registered wins.
+        // Keeps registration order deterministic instead of trapping on a duplicate.
+        providersByType = Dictionary(providers.map { (Swift.type(of: $0).type, $0) },
+                                     uniquingKeysWith: { first, _ in first })
     }
 
     static func standard(urlSession: URLSession = .shared) -> DataProviderRegistry {

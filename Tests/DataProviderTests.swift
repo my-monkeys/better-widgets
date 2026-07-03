@@ -53,4 +53,28 @@ final class DataProviderTests: XCTestCase {
             sources: [SourceSpec(key: "x", type: "nope", config: nil)], paramValues: [:])
         XCTAssertEqual(result.failedKeys, ["x"])
     }
+
+    func testRegistryDuplicateTypeDoesNotTrapAndFirstWins() async {
+        struct FirstProvider: DataProvider {
+            static let type = "dup"
+            let minimumInterval: TimeInterval = 60
+            func fetch(spec: SourceSpec, paramValues: [String: String]) async throws -> Any {
+                ["who": "first"]
+            }
+        }
+        struct SecondProvider: DataProvider {
+            static let type = "dup"
+            let minimumInterval: TimeInterval = 60
+            func fetch(spec: SourceSpec, paramValues: [String: String]) async throws -> Any {
+                ["who": "second"]
+            }
+        }
+        // Construction must not trap even though both providers share `type == "dup"`.
+        let registry = DataProviderRegistry(providers: [FirstProvider(), SecondProvider()])
+        let result = await registry.fetchAll(
+            sources: [SourceSpec(key: "d", type: "dup", config: nil)], paramValues: [:])
+        let dict = try? XCTUnwrap(result.data["d"] as? [String: String])
+        XCTAssertEqual(dict, ["who": "first"])
+        XCTAssertEqual(result.failedKeys, [])
+    }
 }
