@@ -51,11 +51,18 @@ final class RenderPipeline {
             state.lastFetchAt = Date()
             state.stale = !fetch.failedKeys.isEmpty
 
+            // Render both themes before writing anything: if dark fails after light
+            // succeeded, we must not leave a half-updated pair — the previous PNGs
+            // (both themes) stay untouched on any render failure.
+            var renders: [(theme: Theme, png: Data)] = []
             for theme in [Theme.light, Theme.dark] {
                 let context = RenderContext(params: params, data: fetch.data,
                                             size: instance.size, theme: theme, stale: state.stale)
                 let png = try await engine.render(html: html, baseURL: baseURL, context: context)
-                try shared.writeRender(png, instanceId: instance.id, theme: theme)
+                renders.append((theme, png))
+            }
+            for render in renders {
+                try shared.writeRender(render.png, instanceId: instance.id, theme: render.theme)
             }
             state.lastRenderAt = Date()
             state.lastError = nil
