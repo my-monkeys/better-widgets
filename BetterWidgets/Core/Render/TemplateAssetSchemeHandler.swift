@@ -2,11 +2,17 @@ import WebKit
 import UniformTypeIdentifiers
 
 /// Resolves a bwasset://template/<path> request to a real file under templateDir.
-/// Returns nil if the resolved path escapes templateDir (traversal) or doesn't exist.
+/// Returns nil if the resolved path escapes templateDir (traversal, symlink) or doesn't exist.
 func resolveTemplateAsset(templateDir: URL, requestPath: String) -> URL? {
-    let root = templateDir.standardizedFileURL
+    // Resolve symlinks on BOTH sides before the prefix check: `standardizedFileURL` only
+    // collapses `..` lexically and does not follow symlinks, so a symlink planted inside
+    // templateDir (e.g. leak.png -> /etc/passwd) would otherwise pass the `hasPrefix` guard
+    // and get served. `templateDir` itself is frequently reached through a symlinked path
+    // (e.g. /var -> /private/var, macOS temp dirs) — resolving only the candidate would cause
+    // false rejects of legitimate assets, so both sides must go through the same resolution.
+    let root = templateDir.resolvingSymlinksInPath().standardizedFileURL
     let trimmed = requestPath.hasPrefix("/") ? String(requestPath.dropFirst()) : requestPath
-    let candidate = root.appendingPathComponent(trimmed).standardizedFileURL
+    let candidate = root.appendingPathComponent(trimmed).standardizedFileURL.resolvingSymlinksInPath()
     guard candidate.path == root.path || candidate.path.hasPrefix(root.path + "/") else { return nil }
     guard FileManager.default.fileExists(atPath: candidate.path) else { return nil }
     return candidate
