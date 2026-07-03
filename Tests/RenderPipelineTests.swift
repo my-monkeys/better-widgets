@@ -9,8 +9,13 @@ final class RenderPipelineTests: XCTestCase {
     final class FakeEngine: Rendering {
         var calls: [(theme: Theme, stale: Bool)] = []
         var shouldThrow = false
+        /// 1-based render call to throw on (e.g. 2 = fail on the second theme).
+        /// nil preserves the default `shouldThrow`-only behavior.
+        var throwOnCallNumber: Int?
+        private var callCount = 0
         func render(html: String, baseURL: URL?, context: RenderContext) async throws -> Data {
-            if shouldThrow { throw RenderError.timeout }
+            callCount += 1
+            if shouldThrow || callCount == throwOnCallNumber { throw RenderError.timeout }
             calls.append((context.theme, context.stale))
             return Data("png-\(context.theme.rawValue)".utf8)
         }
@@ -69,6 +74,27 @@ final class RenderPipelineTests: XCTestCase {
         let instance = makeInstance()
         await pipeline.refresh(instance)
 
+        XCTAssertEqual(reloader.kinds, [])
+        XCTAssertNotNil(shared.loadState(instanceId: instance.id).lastError)
+    }
+
+    func testSecondThemeRenderFailureLeavesPreviousPNGsIntact() async throws {
+        let engine = FakeEngine()
+        engine.throwOnCallNumber = 2 // light (1st) succeeds, dark (2nd) throws
+        let reloader = FakeReloader()
+        let pipeline = RenderPipeline(templates: templates, shared: shared,
+                                      registry: .standard(), engine: engine, reloader: reloader)
+        let instance = makeInstance()
+
+        try shared.writeRender(Data("OLD-light".utf8), instanceId: instance.id, theme: .light)
+        try shared.writeRender(Data("OLD-dark".utf8), instanceId: instance.id, theme: .dark)
+
+        await pipeline.refresh(instance)
+
+        XCTAssertEqual(try Data(contentsOf: shared.renderURL(instanceId: instance.id, theme: .light)),
+                       Data("OLD-light".utf8))
+        XCTAssertEqual(try Data(contentsOf: shared.renderURL(instanceId: instance.id, theme: .dark)),
+                       Data("OLD-dark".utf8))
         XCTAssertEqual(reloader.kinds, [])
         XCTAssertNotNil(shared.loadState(instanceId: instance.id).lastError)
     }
