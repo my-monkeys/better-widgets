@@ -20,6 +20,7 @@ final class DataProviderRegistry {
             JSONDataProvider(urlSession: urlSession),
             SystemDataProvider(),
             RSSDataProvider(urlSession: urlSession),
+            CalendarDataProvider(fetcher: EventKitFetcher()),
         ])
     }
 

@@ -22,5 +22,9 @@
 	<string>1</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Better Widgets lit vos évènements à venir pour les afficher dans un widget.</string>
+	<key>NSRemindersFullAccessUsageDescription</key>
+	<string>Better Widgets lit vos rappels à venir pour les afficher dans un widget.</string>
 </dict>
 </plist>

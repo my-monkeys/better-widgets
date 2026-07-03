@@ -154,8 +154,8 @@ final class RenderPipelineTests: XCTestCase {
         }
         let engine = RecordingEngine()
         let reloader = FakeReloader()
-        // Registry with NO calendar provider: if the pipeline tried to fetch it,
-        // it would land in failedKeys → stale. It must not even try.
+        // .standard() DOES have a calendar provider; an ungranted source must still never
+        // be fetched. If the pipeline tried, it would land in failedKeys → stale. It must not try.
         let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
                                       registry: .standard(), engine: engine, reloader: reloader)
         let instance = WidgetInstance(id: UUID(), name: "c", templateId: "calnews",
@@ -169,18 +169,24 @@ final class RenderPipelineTests: XCTestCase {
         XCTAssertEqual(reloader.kinds, ["bw.small"])
     }
 
-    /// Once granted, the source is passed to the registry (here it fails → failedKeys/stale,
-    /// which proves it was actually attempted rather than denied).
+    /// Once granted, the source is passed to the registry. The calendar provider's fetcher
+    /// throws here, so the fetch lands in failedKeys → stale, proving it was actually attempted
+    /// rather than denied. A throwing fake fetcher keeps EventKit/TCC out of the test suite.
     func testGrantedConsentSourceIsAttempted() async throws {
         try writeCalendarTemplate()
         let instance = WidgetInstance(id: UUID(), name: "c", templateId: "calnews",
                                       size: .small, paramValues: [:])
         try permissions.grant(type: "calendar", instanceId: instance.id)
-        let engine = FakeEngine()
+        struct ThrowingFetcher: EventFetching {
+            func upcomingEvents(within days: Int) async throws -> [CalendarEventDTO] {
+                throw DataProviderError.missingConfig("no access")
+            }
+        }
+        let registry = DataProviderRegistry(providers: [CalendarDataProvider(fetcher: ThrowingFetcher())])
         let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
-                                      registry: .standard(), engine: engine, reloader: FakeReloader())
+                                      registry: registry, engine: FakeEngine(), reloader: FakeReloader())
         await pipeline.refresh(instance)
-        // .standard() has no calendar provider → attempted fetch fails → stale true.
+        // Granted → the pipeline attempts the fetch; the fetcher throws → failedKey → stale.
         XCTAssertTrue(shared.loadState(instanceId: instance.id).stale)
     }
 }
