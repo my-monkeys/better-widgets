@@ -19,6 +19,7 @@ final class DataProviderRegistry {
         DataProviderRegistry(providers: [
             JSONDataProvider(urlSession: urlSession),
             SystemDataProvider(),
+            RSSDataProvider(urlSession: urlSession),
         ])
     }
 
