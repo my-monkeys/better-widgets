@@ -33,7 +33,7 @@ private func uuid(_ entity: WidgetInstanceEntity?) -> UUID? {
 
 struct BWSmallWidget: Widget {
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "bw.small", intent: SelectSmallWidgetIntent.self,
+        AppIntentConfiguration(kind: WidgetSize.small.kind, intent: SelectSmallWidgetIntent.self,
                                provider: RenderProvider { uuid($0.instance) }) { entry in
             WidgetRenderView(entry: entry)
         }
@@ -45,7 +45,7 @@ struct BWSmallWidget: Widget {
 
 struct BWMediumWidget: Widget {
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "bw.medium", intent: SelectMediumWidgetIntent.self,
+        AppIntentConfiguration(kind: WidgetSize.medium.kind, intent: SelectMediumWidgetIntent.self,
                                provider: RenderProvider { uuid($0.instance) }) { entry in
             WidgetRenderView(entry: entry)
         }
@@ -57,7 +57,7 @@ struct BWMediumWidget: Widget {
 
 struct BWLargeWidget: Widget {
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: "bw.large", intent: SelectLargeWidgetIntent.self,
+        AppIntentConfiguration(kind: WidgetSize.large.kind, intent: SelectLargeWidgetIntent.self,
                                provider: RenderProvider { uuid($0.instance) }) { entry in
             WidgetRenderView(entry: entry)
         }

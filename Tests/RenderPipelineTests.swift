@@ -99,6 +99,29 @@ final class RenderPipelineTests: XCTestCase {
         XCTAssertNotNil(shared.loadState(instanceId: instance.id).lastError)
     }
 
+    func testFetchFailureStillRendersWithStaleFlagAndReloads() async throws {
+        let engine = FakeEngine()
+        let reloader = FakeReloader()
+        // No provider registered for the "system" source type used by the clock template's
+        // manifest, so fetchAll reports it in failedKeys without throwing — this must still
+        // produce a full stale render+reload, not an aborted refresh.
+        let registry = DataProviderRegistry(providers: [])
+        let pipeline = RenderPipeline(templates: templates, shared: shared,
+                                      registry: registry, engine: engine, reloader: reloader)
+        let instance = makeInstance()
+        await pipeline.refresh(instance)
+
+        XCTAssertEqual(engine.calls.map(\.stale), [true, true])
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: shared.renderURL(instanceId: instance.id, theme: .light).path))
+        XCTAssertTrue(FileManager.default.fileExists(
+            atPath: shared.renderURL(instanceId: instance.id, theme: .dark).path))
+        XCTAssertEqual(reloader.kinds, ["bw.small"])
+        let state = shared.loadState(instanceId: instance.id)
+        XCTAssertTrue(state.stale)
+        XCTAssertNil(state.lastError)
+    }
+
     func testMissingTemplateRecordsError() async {
         let pipeline = RenderPipeline(templates: templates, shared: shared,
                                       registry: .standard(), engine: FakeEngine(), reloader: FakeReloader())
