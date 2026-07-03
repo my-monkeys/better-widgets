@@ -1,31 +1,68 @@
 import WidgetKit
 import SwiftUI
+import AppIntents
 
 @main
 struct BetterWidgetsWidgets: WidgetBundle {
     var body: some Widget {
-        StubWidget()
+        BWSmallWidget()
+        BWMediumWidget()
+        BWLargeWidget()
     }
 }
 
-struct StubWidget: Widget {
+/// One provider per intent type (WidgetKit requires concrete intent types per kind).
+struct RenderProvider<Intent: WidgetConfigurationIntent>: AppIntentTimelineProvider {
+    let instanceId: (Intent) -> UUID?
+
+    func placeholder(in context: Context) -> RenderEntry { RenderEntry(date: .now, instanceId: nil) }
+
+    func snapshot(for configuration: Intent, in context: Context) async -> RenderEntry {
+        RenderEntry(date: .now, instanceId: instanceId(configuration))
+    }
+
+    func timeline(for configuration: Intent, in context: Context) async -> Timeline<RenderEntry> {
+        // Single entry, .never: the app drives reloads via WidgetCenter.
+        Timeline(entries: [RenderEntry(date: .now, instanceId: instanceId(configuration))], policy: .never)
+    }
+}
+
+private func uuid(_ entity: WidgetInstanceEntity?) -> UUID? {
+    entity.flatMap { UUID(uuidString: $0.id) }
+}
+
+struct BWSmallWidget: Widget {
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: "bw.stub", provider: StubProvider()) { _ in
-            Text("Better Widgets")
-                .containerBackground(for: .widget) { Color.black }
+        AppIntentConfiguration(kind: "bw.small", intent: SelectSmallWidgetIntent.self,
+                               provider: RenderProvider { uuid($0.instance) }) { entry in
+            WidgetRenderView(entry: entry)
         }
-        .configurationDisplayName("Better Widgets (stub)")
+        .configurationDisplayName("Better Widget — Petit")
+        .description("Un widget créé dans Better Widgets.")
+        .supportedFamilies([.systemSmall])
     }
 }
 
-struct StubProvider: TimelineProvider {
-    func placeholder(in context: Context) -> SimpleEntry { SimpleEntry(date: .now) }
-    func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> Void) {
-        completion(SimpleEntry(date: .now))
-    }
-    func getTimeline(in context: Context, completion: @escaping (Timeline<SimpleEntry>) -> Void) {
-        completion(Timeline(entries: [SimpleEntry(date: .now)], policy: .never))
+struct BWMediumWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: "bw.medium", intent: SelectMediumWidgetIntent.self,
+                               provider: RenderProvider { uuid($0.instance) }) { entry in
+            WidgetRenderView(entry: entry)
+        }
+        .configurationDisplayName("Better Widget — Moyen")
+        .description("Un widget créé dans Better Widgets.")
+        .supportedFamilies([.systemMedium])
     }
 }
 
-struct SimpleEntry: TimelineEntry { let date: Date }
+struct BWLargeWidget: Widget {
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: "bw.large", intent: SelectLargeWidgetIntent.self,
+                               provider: RenderProvider { uuid($0.instance) }) { entry in
+            WidgetRenderView(entry: entry)
+        }
+        .configurationDisplayName("Better Widget — Grand")
+        .description("Un widget créé dans Better Widgets.")
+        .supportedFamilies([.systemLarge])
+    }
+}
