@@ -19,6 +19,9 @@ final class DataProviderRegistry {
         DataProviderRegistry(providers: [
             JSONDataProvider(urlSession: urlSession),
             SystemDataProvider(),
+            RSSDataProvider(urlSession: urlSession),
+            CalendarDataProvider(fetcher: EventKitFetcher()),
+            WeatherDataProvider(fetcher: WeatherKitService(), geocoder: geocodeCity),
         ])
     }
 

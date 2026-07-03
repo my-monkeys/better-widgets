@@ -30,11 +30,14 @@ targets:
         com.apple.security.network.client: true
         com.apple.security.application-groups:
           - 5C67TFSJ2B.betterwidgets
+        com.apple.security.personal-information.calendars: true
     info:
       path: BetterWidgets/Info.plist
       properties:
         LSUIElement: true
         CFBundleDisplayName: Better Widgets
+        NSCalendarsFullAccessUsageDescription: "Better Widgets lit vos évènements à venir pour les afficher dans un widget."
+        NSRemindersFullAccessUsageDescription: "Better Widgets lit vos rappels à venir pour les afficher dans un widget."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgets

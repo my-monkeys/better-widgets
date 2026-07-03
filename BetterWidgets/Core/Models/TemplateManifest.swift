@@ -21,10 +21,13 @@ struct ParamSpec: Codable, Equatable {
 }
 
 struct SourceSpec: Codable, Equatable {
-    static let knownTypes: Set<String> = ["json", "system"]
+    static let knownTypes: Set<String> = ["json", "system", "rss", "calendar", "weather"]
+    static let consentRequiredTypes: Set<String> = ["calendar", "weather"]
     let key: String
     let type: String
     let config: [String: String]?
+
+    var requiresConsent: Bool { Self.consentRequiredTypes.contains(type) }
 }
 
 struct LinkSpec: Codable, Equatable {

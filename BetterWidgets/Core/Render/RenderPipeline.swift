@@ -22,14 +22,16 @@ struct WidgetCenterReloader: WidgetReloading {
 final class RenderPipeline {
     private let templates: TemplateStore
     private let shared: SharedStore
+    private let permissions: PermissionStore
     private let registry: DataProviderRegistry
     private let engine: any Rendering
     private let reloader: any WidgetReloading
 
-    init(templates: TemplateStore, shared: SharedStore, registry: DataProviderRegistry,
-         engine: any Rendering, reloader: any WidgetReloading) {
+    init(templates: TemplateStore, shared: SharedStore, permissions: PermissionStore,
+         registry: DataProviderRegistry, engine: any Rendering, reloader: any WidgetReloading) {
         self.templates = templates
         self.shared = shared
+        self.permissions = permissions
         self.registry = registry
         self.engine = engine
         self.reloader = reloader
@@ -47,7 +49,17 @@ final class RenderPipeline {
             for spec in manifest.params { params[spec.key] = spec.default }
             params.merge(instance.paramValues) { _, instanceValue in instanceValue }
 
-            let fetch = await registry.fetchAll(sources: manifest.sources, paramValues: params)
+            // Partition sources by permission: consent-requiring types that the
+            // user hasn't granted are never fetched — they're injected as a
+            // __denied marker (which is intentional, not a fetch failure).
+            let granted = permissions.grantedTypes(instanceId: instance.id)
+            let allowed = manifest.sources.filter { !$0.requiresConsent || granted.contains($0.type) }
+            let denied = manifest.sources.filter { $0.requiresConsent && !granted.contains($0.type) }
+
+            let fetch = await registry.fetchAll(sources: allowed, paramValues: params)
+            var data = fetch.data
+            for source in denied { data[source.key] = ["__denied": true] }
+
             state.lastFetchAt = Date()
             state.stale = !fetch.failedKeys.isEmpty
 
@@ -56,7 +68,7 @@ final class RenderPipeline {
             // (both themes) stay untouched on any render failure.
             var renders: [(theme: Theme, png: Data)] = []
             for theme in [Theme.light, Theme.dark] {
-                let context = RenderContext(params: params, data: fetch.data,
+                let context = RenderContext(params: params, data: data,
                                             size: instance.size, theme: theme, stale: state.stale)
                 let png = try await engine.render(html: html, baseURL: baseURL, context: context)
                 renders.append((theme, png))
