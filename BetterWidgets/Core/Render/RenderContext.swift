@@ -1,9 +1,5 @@
 import Foundation
 
-enum Theme: String, Codable {
-    case light, dark
-}
-
 struct RenderContext {
     let params: [String: String]
     let data: [String: Any]
