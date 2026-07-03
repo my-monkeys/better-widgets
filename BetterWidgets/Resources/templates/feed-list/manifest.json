@@ -1,0 +1,12 @@
+{
+  "id": "feed-list",
+  "name": "Fil d'actualité",
+  "version": "1.0.0",
+  "sizes": ["medium", "large"],
+  "refresh": 900,
+  "params": [
+    { "key": "url", "type": "url", "label": "URL du flux RSS", "default": "https://hnrss.org/frontpage" },
+    { "key": "accent", "type": "color", "label": "Couleur d'accent", "default": "#e8590c" }
+  ],
+  "sources": [{ "key": "feed", "type": "rss", "config": { "url": "{{url}}" } }]
+}

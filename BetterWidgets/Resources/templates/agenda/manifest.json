@@ -1,0 +1,9 @@
+{
+  "id": "agenda",
+  "name": "Agenda",
+  "version": "1.0.0",
+  "sizes": ["medium", "large"],
+  "refresh": 300,
+  "params": [{ "key": "accent", "type": "color", "label": "Couleur d'accent", "default": "#1c7ed6" }],
+  "sources": [{ "key": "cal", "type": "calendar", "config": { "days": "7" } }]
+}
