@@ -25,6 +25,17 @@ final class RenderEngine: NSObject {
         controller.addUserScript(WKUserScript(source: bwScript, injectionTime: .atDocumentStart, forMainFrameOnly: true))
         config.userContentController = controller
 
+        // Serve the template's own assets over a confined bwasset:// scheme; the
+        // WebView gets no file:// access at all (see §7 sandbox hardening).
+        let assetBase: URL?
+        if let templateDir = baseURL {
+            config.setURLSchemeHandler(TemplateAssetSchemeHandler(templateDir: templateDir),
+                                       forURLScheme: "bwasset")
+            assetBase = URL(string: "bwasset://template/")
+        } else {
+            assetBase = nil
+        }
+
         let webView = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: config)
         webView.appearance = NSAppearance(named: context.theme == .dark ? .darkAqua : .aqua)
         webView.pageZoom = 2
@@ -33,7 +44,7 @@ final class RenderEngine: NSObject {
         let navDelegate = NavDelegate()
         webView.navigationDelegate = navDelegate
 
-        webView.loadHTMLString(html, baseURL: baseURL)
+        webView.loadHTMLString(html, baseURL: assetBase)
 
         // Wait: BW.ready() wins immediately; otherwise didFinish + grace delay; hard timeout 5 s.
         try await withThrowingTaskGroup(of: Void.self) { group in
@@ -136,6 +147,12 @@ private final class NavDelegate: NSObject, WKNavigationDelegate {
             self.continuations.forEach { $0.resume() }
             self.continuations.removeAll()
         }
+    }
+
+    nonisolated func webView(_ webView: WKWebView,
+                             decidePolicyFor navigationAction: WKNavigationAction,
+                             decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
+        decisionHandler(NavigationPolicy.decide(for: navigationAction.request.url))
     }
 
     func waitForFinish() async {
