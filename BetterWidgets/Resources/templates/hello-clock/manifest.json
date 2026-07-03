@@ -1,0 +1,11 @@
+{
+  "id": "hello-clock",
+  "name": "Horloge",
+  "version": "1.0.0",
+  "sizes": ["small", "medium"],
+  "refresh": 60,
+  "params": [
+    { "key": "accent", "type": "color", "label": "Couleur d'accent", "default": "#e8590c" }
+  ],
+  "sources": [{ "key": "sys", "type": "system" }]
+}

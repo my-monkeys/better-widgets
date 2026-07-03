@@ -1,0 +1,85 @@
+name: BetterWidgets
+options:
+  bundleIdPrefix: fr.my-monkey
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    DEVELOPMENT_TEAM: 5C67TFSJ2B
+    SWIFT_VERSION: "5.9"
+    CODE_SIGN_STYLE: Automatic
+targets:
+  BetterWidgets:
+    type: application
+    platform: macOS
+    sources:
+      - path: BetterWidgets
+        excludes:
+          - "Resources/templates/**"
+      - path: BetterWidgets/Resources/templates
+        type: folder
+        buildPhase: resources
+    dependencies:
+      - target: WidgetExtension
+        embed: true
+    entitlements:
+      path: BetterWidgets/BetterWidgets.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+        com.apple.security.application-groups:
+          - 5C67TFSJ2B.betterwidgets
+    info:
+      path: BetterWidgets/Info.plist
+      properties:
+        LSUIElement: true
+        CFBundleDisplayName: Better Widgets
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgets
+        ENABLE_HARDENED_RUNTIME: true
+  WidgetExtension:
+    type: app-extension
+    platform: macOS
+    sources:
+      - WidgetExtension
+      - path: BetterWidgets/Core/Models
+        optional: true
+      - path: BetterWidgets/Core/SharedStore.swift
+        optional: true
+    entitlements:
+      path: WidgetExtension/WidgetExtension.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.application-groups:
+          - 5C67TFSJ2B.betterwidgets
+    info:
+      path: WidgetExtension/Info.plist
+      properties:
+        CFBundleDisplayName: Better Widgets
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgets.WidgetExtension
+        ENABLE_HARDENED_RUNTIME: true
+  BetterWidgetsTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - Tests
+      - path: BetterWidgets/Core
+        optional: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgetsTests
+        GENERATE_INFOPLIST_FILE: true
+schemes:
+  BetterWidgets:
+    build:
+      targets:
+        BetterWidgets: all
+    test:
+      targets:
+        - BetterWidgetsTests
