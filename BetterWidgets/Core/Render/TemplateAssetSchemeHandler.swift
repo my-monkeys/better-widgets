@@ -37,3 +37,10 @@ final class TemplateAssetSchemeHandler: NSObject, WKURLSchemeHandler {
 
     func webView(_ webView: WKWebView, stop urlSchemeTask: WKURLSchemeTask) {}
 }
+
+extension TemplateAssetSchemeHandler {
+    /// Single source of truth for the confined scheme name — shared by NavigationPolicy's
+    /// whitelist and RenderEngine's scheme registration/base URL so a rename can't silently
+    /// desync the two.
+    static let scheme = "bwasset"
+}

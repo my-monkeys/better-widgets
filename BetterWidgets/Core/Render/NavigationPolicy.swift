@@ -4,7 +4,7 @@ import WebKit
 /// Everything else (file://, http://, ftp://, nil) is cancelled — a template
 /// must not reach the local filesystem or downgrade to cleartext.
 enum NavigationPolicy {
-    private static let allowedSchemes: Set<String> = ["about", "https", "bwasset", "data"]
+    private static let allowedSchemes: Set<String> = ["about", "https", TemplateAssetSchemeHandler.scheme, "data"]
 
     static func decide(for url: URL?) -> WKNavigationActionPolicy {
         guard let scheme = url?.scheme?.lowercased(), allowedSchemes.contains(scheme) else {

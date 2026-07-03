@@ -30,8 +30,8 @@ final class RenderEngine: NSObject {
         let assetBase: URL?
         if let templateDir = baseURL {
             config.setURLSchemeHandler(TemplateAssetSchemeHandler(templateDir: templateDir),
-                                       forURLScheme: "bwasset")
-            assetBase = URL(string: "bwasset://template/")
+                                       forURLScheme: TemplateAssetSchemeHandler.scheme)
+            assetBase = URL(string: "\(TemplateAssetSchemeHandler.scheme)://template/")
         } else {
             assetBase = nil
         }
