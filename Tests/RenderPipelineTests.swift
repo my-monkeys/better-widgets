@@ -5,6 +5,7 @@ final class RenderPipelineTests: XCTestCase {
     private var tmp: URL!
     private var shared: SharedStore!
     private var templates: TemplateStore!
+    private var permissions: PermissionStore!
 
     final class FakeEngine: Rendering {
         var calls: [(theme: Theme, stale: Bool)] = []
@@ -29,6 +30,7 @@ final class RenderPipelineTests: XCTestCase {
     override func setUpWithError() throws {
         tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         shared = try SharedStore(baseURL: tmp.appendingPathComponent("shared"))
+        permissions = try PermissionStore(baseURL: tmp.appendingPathComponent("perms"))
         let tplRoot = tmp.appendingPathComponent("templates")
         try FileManager.default.createDirectory(at: tplRoot.appendingPathComponent("clock"),
                                                 withIntermediateDirectories: true)
@@ -50,7 +52,7 @@ final class RenderPipelineTests: XCTestCase {
     func testRefreshWritesBothThemesAndReloads() async throws {
         let engine = FakeEngine()
         let reloader = FakeReloader()
-        let pipeline = RenderPipeline(templates: templates, shared: shared,
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
                                       registry: .standard(), engine: engine, reloader: reloader)
         let instance = makeInstance()
         await pipeline.refresh(instance)
@@ -69,7 +71,7 @@ final class RenderPipelineTests: XCTestCase {
         let engine = FakeEngine()
         engine.shouldThrow = true
         let reloader = FakeReloader()
-        let pipeline = RenderPipeline(templates: templates, shared: shared,
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
                                       registry: .standard(), engine: engine, reloader: reloader)
         let instance = makeInstance()
         await pipeline.refresh(instance)
@@ -82,7 +84,7 @@ final class RenderPipelineTests: XCTestCase {
         let engine = FakeEngine()
         engine.throwOnCallNumber = 2 // light (1st) succeeds, dark (2nd) throws
         let reloader = FakeReloader()
-        let pipeline = RenderPipeline(templates: templates, shared: shared,
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
                                       registry: .standard(), engine: engine, reloader: reloader)
         let instance = makeInstance()
 
@@ -106,7 +108,7 @@ final class RenderPipelineTests: XCTestCase {
         // manifest, so fetchAll reports it in failedKeys without throwing — this must still
         // produce a full stale render+reload, not an aborted refresh.
         let registry = DataProviderRegistry(providers: [])
-        let pipeline = RenderPipeline(templates: templates, shared: shared,
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
                                       registry: registry, engine: engine, reloader: reloader)
         let instance = makeInstance()
         await pipeline.refresh(instance)
@@ -123,11 +125,62 @@ final class RenderPipelineTests: XCTestCase {
     }
 
     func testMissingTemplateRecordsError() async {
-        let pipeline = RenderPipeline(templates: templates, shared: shared,
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
                                       registry: .standard(), engine: FakeEngine(), reloader: FakeReloader())
         let instance = WidgetInstance(id: UUID(), name: "x", templateId: "ghost",
                                       size: .small, paramValues: [:])
         await pipeline.refresh(instance)
         XCTAssertNotNil(shared.loadState(instanceId: instance.id).lastError)
+    }
+
+    private func writeCalendarTemplate() throws {
+        let dir = tmp.appendingPathComponent("templates/calnews")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try #"{ "id": "calnews", "name": "Cal", "version": "1.0.0", "sizes": ["small"], "refresh": 300, "params": [], "sources": [{"key":"cal","type":"calendar"}] }"#
+            .write(to: dir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
+        try "<html></html>".write(to: dir.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
+    }
+
+    /// A consent-requiring source that is NOT granted must be skipped (not fetched)
+    /// and injected as a __denied marker — without marking the instance stale.
+    func testUngrantedConsentSourceIsDeniedNotFetched() async throws {
+        try writeCalendarTemplate()
+        final class RecordingEngine: Rendering {
+            var lastData: [String: Any] = [:]
+            func render(html: String, baseURL: URL?, context: RenderContext) async throws -> Data {
+                lastData = context.data
+                return Data("png".utf8)
+            }
+        }
+        let engine = RecordingEngine()
+        let reloader = FakeReloader()
+        // Registry with NO calendar provider: if the pipeline tried to fetch it,
+        // it would land in failedKeys → stale. It must not even try.
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
+                                      registry: .standard(), engine: engine, reloader: reloader)
+        let instance = WidgetInstance(id: UUID(), name: "c", templateId: "calnews",
+                                      size: .small, paramValues: [:])
+        await pipeline.refresh(instance)
+
+        let cal = engine.lastData["cal"] as? [String: Any]
+        XCTAssertEqual(cal?["__denied"] as? Bool, true)
+        XCTAssertFalse(shared.loadState(instanceId: instance.id).stale, "denied ≠ stale")
+        XCTAssertNil(shared.loadState(instanceId: instance.id).lastError)
+        XCTAssertEqual(reloader.kinds, ["bw.small"])
+    }
+
+    /// Once granted, the source is passed to the registry (here it fails → failedKeys/stale,
+    /// which proves it was actually attempted rather than denied).
+    func testGrantedConsentSourceIsAttempted() async throws {
+        try writeCalendarTemplate()
+        let instance = WidgetInstance(id: UUID(), name: "c", templateId: "calnews",
+                                      size: .small, paramValues: [:])
+        try permissions.grant(type: "calendar", instanceId: instance.id)
+        let engine = FakeEngine()
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
+                                      registry: .standard(), engine: engine, reloader: FakeReloader())
+        await pipeline.refresh(instance)
+        // .standard() has no calendar provider → attempted fetch fails → stale true.
+        XCTAssertTrue(shared.loadState(instanceId: instance.id).stale)
     }
 }

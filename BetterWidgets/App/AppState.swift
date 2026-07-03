@@ -7,8 +7,9 @@ final class AppState: ObservableObject {
 
     let shared = SharedStore.appGroup()
     let templates = TemplateStore.applicationSupport()
+    let permissions = PermissionStore.appGroup()
     private lazy var pipeline = RenderPipeline(
-        templates: templates, shared: shared,
+        templates: templates, shared: shared, permissions: permissions,
         registry: .standard(), engine: RenderEngine(), reloader: WidgetCenterReloader())
     private lazy var scheduler = Scheduler(refresher: pipeline, templates: templates)
 
