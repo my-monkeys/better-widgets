@@ -14,7 +14,12 @@ targets:
     type: application
     platform: macOS
     sources:
-      - BetterWidgets
+      - path: BetterWidgets
+        excludes:
+          - "Resources/templates/**"
+      - path: BetterWidgets/Resources/templates
+        type: folder
+        buildPhase: resources
     dependencies:
       - target: WidgetExtension
         embed: true
