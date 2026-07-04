@@ -9,12 +9,15 @@ le pitch produit ; ce fichier couvre les conventions et gotchas pour continuer l
 **Plan 2 (providers & permissions, ce qui est fait)** : [`docs/superpowers/plans/2026-07-03-better-widgets-providers-permissions.md`](docs/superpowers/plans/2026-07-03-better-widgets-providers-permissions.md)
 **Plan 3a (coquille d'app + Mes widgets, ce qui est fait)** : [spec](docs/superpowers/specs/2026-07-04-better-widgets-ui-3a-design.md) · [plan](docs/superpowers/plans/2026-07-04-better-widgets-ui-3a.md)
 **Plan 3b-1 (éditeur params + preview live + secrets Keychain, ce qui est fait)** : [spec](docs/superpowers/specs/2026-07-04-better-widgets-ui-3b1-design.md) · [plan](docs/superpowers/plans/2026-07-04-better-widgets-ui-3b1.md)
+**Plan 3b-2 (mode avancé code CodeMirror, ce qui est fait)** : [spec](docs/superpowers/specs/2026-07-04-better-widgets-ui-3b2-design.md) · [plan](docs/superpowers/plans/2026-07-04-better-widgets-ui-3b2.md)
 
 ## Stack
 
-Swift 5.9 · SwiftUI · WidgetKit (`AppIntentConfiguration`) · WKWebView (moteur de rendu) ·
-XcodeGen · macOS 14+ · Xcode 27. Pas de dépendance externe (SPM vide) — tout est Foundation/
-AppKit/WebKit/WidgetKit.
+Swift 5.9 · SwiftUI · WidgetKit (`AppIntentConfiguration`) · WKWebView (moteur de rendu + preview
+live + éditeur de code) · XcodeGen · macOS 14+ · Xcode 27. Pas de dépendance **SPM** — tout est
+Foundation/AppKit/WebKit/WidgetKit/EventKit/WeatherKit/Security. Seul asset tiers **vendoré** (pas
+un package) : **CodeMirror 5** dans `BetterWidgets/Resources/codemirror/` (mode avancé code, servi à
+la WKWebView, **aucun CDN au runtime**).
 
 ## ⚠️ Le `.xcodeproj` est généré — ne jamais l'éditer à la main
 
@@ -71,14 +74,21 @@ BetterWidgets/Core/
 └── TemplateStore.swift   templates sur disque (Application Support) + bootstrap des templates bundlés
 ```
 
-Côté **app UI** (Plan 3a, dans `BetterWidgets/App/`, target app uniquement) : `AppState` (source de
-vérité `@MainActor`, **injectable** : init désigné + convenience ; CRUD create/delete/duplicate +
-`status(for:)` → `InstanceStatus{ok,pending,stale,error}`), `MainWindowView` (`Window(id:"main")`
-singleton + `NavigationSplitView` Mes widgets/Galerie), `MyWidgetsView` (grille de cartes, refresh
-via `TimelineView(.periodic)`), `WidgetCard` (+ `WidgetCardModel` testable), `GalleryView`,
-`AddToDesktopGuide`. Les fichiers de logique testés (`AppState.swift`, `WidgetCard.swift`) sont
-ajoutés individuellement aux sources de `BetterWidgetsTests` dans `project.yml` (jamais le dossier
-`App/` entier — sinon le `@main` entre dans le bundle de test).
+Côté **app UI** (`BetterWidgets/App/`, target app uniquement) : `AppState` (source de vérité
+`@MainActor`, **injectable** : init désigné + convenience ; CRUD create/delete/**update**/duplicate +
+`status(for:)` → `InstanceStatus{ok,pending,stale,error}` ; expose `shared`/`templates`/`secrets`/
+`permissions`). **3a** : `MainWindowView` (`Window(id:"main")` singleton + `NavigationSplitView` Mes
+widgets/Galerie), `MyWidgetsView` (grille, refresh via `TimelineView(.periodic)`), `WidgetCard`
+(+`WidgetCardModel` testable), `GalleryView`, `AddToDesktopGuide`. **3b-1** (éditeur de params
+d'instance) : `WidgetEditorView`/`ParamFormView`, `WidgetEditorModel`, `LivePreviewView` (WKWebView
+vivante réutilisée), secrets via `Core/KeychainStore.swift`+`Core/SecretResolver.swift` (résolus dans
+`RenderPipeline`, jamais dans `instances.json`). **3b-2** (mode avancé code) : `CodeEditorBridge`
+(CodeMirror↔Swift), `CodeEditorView` (onglets html/manifest), `TemplateCodeEditorView` (code+preview),
+`TemplateEditorModel` ; écritures de templates **utilisateur** dans `TemplateStore` (marqueur `.user` ;
+bundlés read-only). Les fichiers de **logique testés** (`AppState.swift`, `WidgetCard.swift`,
+`WidgetEditorModel.swift`, `TemplateEditorModel.swift`) sont ajoutés **individuellement** aux sources
+de `BetterWidgetsTests` dans `project.yml` (jamais le dossier `App/` entier — sinon le `@main` entre
+dans le bundle de test).
 
 `SharedStore.swift` et `Core/Models/**` sont compilés dans **les deux** targets (app + extension)
 via `project.yml` — pas de framework partagé, YAGNI tant qu'il n'y a que ces deux consommateurs.
@@ -92,11 +102,12 @@ xcodegen generate && xcodebuild test -project BetterWidgets.xcodeproj -scheme Be
   -destination 'platform=macOS' -quiet
 ```
 
-93 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
+106 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
 RenderEngine, NavigationPolicy, TemplateAssetSchemeHandler, DataProvider, RSSDataProvider,
 RSSFeedParser, CalendarDataProvider, WeatherDataProvider, PermissionStore, RenderPipeline,
 Scheduler, WidgetSize, Smoke, DesignTokens, AppState, WidgetCardModel), Plan 3b-1 ajoute
-`KeychainStoreTests`, `SecretResolverTests`, `WidgetEditorModelTests`.
+`KeychainStoreTests`, `SecretResolverTests`, `WidgetEditorModelTests` ; Plan 3b-2 ajoute
+`TemplateStoreWriteTests`, `TemplateEditorModelTests`.
 Doit rester vert avant tout commit. Les vues SwiftUI n'ont pas de tests unitaires (gate = build vert
 + vérif réelle) ; la logique (CRUD, model, scheduler, store, tokens, secrets/resolver, éditeur) est testée.
 Secrets en test : toujours un `SecretBackingStore` mémoire, jamais le vrai Keychain.
@@ -158,8 +169,16 @@ messages de commit.
       mémoire** (aucune écriture Keychain avant « Enregistrer »). `AppState.updateInstance`.
       Dette fast-follow : factoriser le resolve/partition dupliqué entre `RenderPipeline.refresh` et
       `fetchPreviewData`.
-    - **3b-2 — Mode avancé code** : à venir. CodeMirror embarqué (WKWebView) pour écrire/forker des
-      templates HTML/manifest à la main.
+    - **3b-2 — Mode avancé code** (`feat/fondations`) : **fait**. Depuis la Galerie, « Nouveau
+      template » (scaffold) ou « Forker » un template crée un template **utilisateur** (sur disque,
+      marqueur `.user` ; les bundlés restent read-only), ouvert dans `TemplateCodeEditorView` (.sheet) :
+      **CodeMirror 5 vendoré** (`CodeEditorBridge`, onglets html/manifest, coloration + numéros de
+      ligne, servi via `bwasset://`, pont Swift↔JS synchrone) à gauche + `LivePreviewView` à droite.
+      Manifest validé à l'enregistrement (invalide → refusé + message FR) ; la preview **gèle** sur le
+      dernier manifest valide pendant l'édition. Écritures `TemplateStore` : `createUserTemplate`/
+      `forkTemplate`/`saveTemplate` (garde contre l'écrasement d'un bundlé)/`deleteUserTemplate`/
+      `isUserTemplate`. Dette fast-follow : orphelins des templates vides (création eager au tap),
+      partition `fetchPreviewData` dupliquée.
   - **3c — Partage & consentement** : import/export `.bwidget` (⚠️ le confinement symlink-safe de la
     WebView, fait en Plan 2, est un **prérequis dur** avant l'import), UI de consentement (grants du
     `PermissionStore`), + météo par localisation courante (`CLLocationManager`).
