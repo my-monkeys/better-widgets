@@ -189,4 +189,45 @@ final class RenderPipelineTests: XCTestCase {
         // Granted → the pipeline attempts the fetch; the fetcher throws → failedKey → stale.
         XCTAssertTrue(shared.loadState(instanceId: instance.id).stale)
     }
+
+    final class InMemorySecretStore: SecretBackingStore {
+        private var s: [String: String] = [:]
+        func setSecret(_ value: String, forKey key: String) { s[key] = value }
+        func secret(forKey key: String) -> String? { s[key] }
+        func deleteSecret(forKey key: String) { s[key] = nil }
+    }
+
+    /// Proves the secret is injected into the config passed to the provider: a fake
+    /// provider captures the config it receives and we assert secret.<H> became header.<H>.
+    func testSecretResolvedIntoHeaderBeforeFetch() async throws {
+        // Template with a json source declaring a secret header.
+        let dir = tmp.appendingPathComponent("templates/api")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try #"{ "id": "api", "name": "API", "version": "1.0.0", "sizes": ["small"], "refresh": 60, "params": [], "sources": [{"key":"api","type":"json","config":{"url":"https://x","secret.Authorization":""}}] }"#
+            .write(to: dir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
+        try "<html></html>".write(to: dir.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
+
+        final class CapturingProvider: DataProvider {
+            static let type = "json"
+            let minimumInterval: TimeInterval = 60
+            var lastConfig: [String: String]?
+            func fetch(spec: SourceSpec, paramValues: [String: String]) async throws -> Any {
+                lastConfig = spec.config
+                return ["ok": true]
+            }
+        }
+        let capturing = CapturingProvider()
+        let mem = InMemorySecretStore()
+        let resolver = SecretResolver(backing: mem)
+        let instance = WidgetInstance(id: UUID(), name: "a", templateId: "api", size: .small, paramValues: [:])
+        resolver.set("Bearer T", instanceId: instance.id, sourceKey: "api", header: "Authorization")
+
+        let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
+                                      registry: DataProviderRegistry(providers: [capturing]),
+                                      secrets: resolver, engine: FakeEngine(), reloader: FakeReloader())
+        await pipeline.refresh(instance)
+
+        XCTAssertEqual(capturing.lastConfig?["header.Authorization"], "Bearer T")
+        XCTAssertNil(capturing.lastConfig?["secret.Authorization"])
+    }
 }

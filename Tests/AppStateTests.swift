@@ -13,6 +13,13 @@ final class AppStateTests: XCTestCase {
         func refreshAllNow(instances: [WidgetInstance]) { refreshed.append(instances) }
     }
 
+    final class MemSecretStore: SecretBackingStore {
+        private var s: [String: String] = [:]
+        func setSecret(_ value: String, forKey key: String) { s[key] = value }
+        func secret(forKey key: String) -> String? { s[key] }
+        func deleteSecret(forKey key: String) { s[key] = nil }
+    }
+
     override func setUpWithError() throws {
         tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         shared = try SharedStore(baseURL: tmp.appendingPathComponent("shared"))
@@ -30,7 +37,9 @@ final class AppStateTests: XCTestCase {
 
     private func makeState() -> (AppState, SpyScheduler) {
         let spy = SpyScheduler()
-        return (AppState(shared: shared, templates: templates, scheduler: spy), spy)
+        let state = AppState(shared: shared, templates: templates,
+                             secrets: SecretResolver(backing: MemSecretStore()), scheduler: spy)
+        return (state, spy)
     }
 
     func testCreateInstanceUsesTemplateNameAndPersists() {
