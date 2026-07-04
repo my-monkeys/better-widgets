@@ -88,6 +88,8 @@ targets:
         optional: true
       - path: BetterWidgets/App/TemplateEditorModel.swift
         optional: true
+      - path: BetterWidgets/App/PermissionConsentModel.swift
+        optional: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgetsTests
