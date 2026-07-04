@@ -1,4 +1,5 @@
 import SwiftUI
+import AppKit
 
 /// "Galerie" screen: lists bundled templates and lets the user spin up a new
 /// `WidgetInstance` from one, at a chosen size, via `AppState.createInstance`.
@@ -7,17 +8,30 @@ struct GalleryView: View {
     var onCreated: (WidgetInstance) -> Void = { _ in }
     @State private var editingTemplateId: IdentifiedString?
     @State private var pendingDelete: String?
+    @State private var importError: String?
+    /// Bumped after a successful import to force `templates` to re-evaluate:
+    /// `TemplateStore.list()` reads the filesystem directly, so SwiftUI has no
+    /// observable signal that a new directory appeared on disk.
+    @State private var refreshTick = 0
 
-    private var templates: [TemplateManifest] { state.templates.list() }
+    private var templates: [TemplateManifest] {
+        _ = refreshTick
+        return state.templates.list()
+    }
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                Button("Nouveau template") {
-                    let id = state.templates.createUserTemplate(name: "Nouveau widget")
-                    editingTemplateId = IdentifiedString(id: id)
+                HStack(spacing: DesignTokens.Space.sm) {
+                    Button("Nouveau template") {
+                        let id = state.templates.createUserTemplate(name: "Nouveau widget")
+                        editingTemplateId = IdentifiedString(id: id)
+                    }
+                    .buttonStyle(.borderedProminent).tint(DesignTokens.accent)
+
+                    Button("Importer…") { importBWidget() }
+                        .buttonStyle(.bordered).tint(DesignTokens.accent)
                 }
-                .buttonStyle(.borderedProminent).tint(DesignTokens.accent)
                 .padding([.top, .horizontal], DesignTokens.Space.xxl)
 
                 if templates.isEmpty {
@@ -45,6 +59,10 @@ struct GalleryView: View {
             Button("Supprimer", role: .destructive) { state.templates.deleteUserTemplate(id: id); pendingDelete = nil }
             Button("Annuler", role: .cancel) { pendingDelete = nil }
         } message: { _ in Text("Les widgets basés dessus afficheront un placeholder.") }
+        .alert("Import", isPresented: Binding(
+            get: { importError != nil }, set: { if !$0 { importError = nil } })) {
+            Button("OK") { importError = nil }
+        } message: { Text(importError ?? "") }
     }
 
     private func row(_ manifest: TemplateManifest) -> some View {
@@ -68,6 +86,7 @@ struct GalleryView: View {
                         editingTemplateId = IdentifiedString(id: id)
                     }
                 }
+                Button("Exporter…") { exportBWidget(manifest.id) }
                 if state.templates.isUserTemplate(id: manifest.id) {
                     Button("Éditer le code") { editingTemplateId = IdentifiedString(id: manifest.id) }
                     Button("Supprimer", role: .destructive) { pendingDelete = manifest.id }
@@ -79,6 +98,29 @@ struct GalleryView: View {
         .background(DesignTokens.surface)
         .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.card).stroke(DesignTokens.separator, lineWidth: 1))
         .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card))
+    }
+
+    private func importBWidget() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = []           // filter by extension below
+        panel.allowsOtherFileTypes = true
+        panel.canChooseFiles = true; panel.canChooseDirectories = false
+        guard panel.runModal() == .OK, let url = panel.url, url.pathExtension == "bwidget",
+              let data = try? Data(contentsOf: url) else { return }
+        do {
+            _ = try BWidgetImporter.install(archive: data, into: state.templates)
+            refreshTick += 1
+        } catch {
+            importError = "Import impossible : \(error)"
+        }
+    }
+
+    private func exportBWidget(_ id: String) {
+        guard let data = try? BWidgetArchive.export(templateDir: state.templates.templateDirectory(id: id)) else { return }
+        let panel = NSSavePanel()
+        panel.nameFieldStringValue = "\(id).bwidget"
+        guard panel.runModal() == .OK, let url = panel.url else { return }
+        try? data.write(to: url)
     }
 
     private func badge(_ text: String) -> some View {

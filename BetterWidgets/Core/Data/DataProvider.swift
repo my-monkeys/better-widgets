@@ -5,6 +5,9 @@ enum DataProviderError: Error {
     case missingConfig(String)
     case badURL(String)
     case httpError(Int)
+    /// A provider that only supports one in-flight request rejected a concurrent call
+    /// rather than silently orphaning the earlier one.
+    case requestInFlight(String)
 }
 
 protocol DataProvider {

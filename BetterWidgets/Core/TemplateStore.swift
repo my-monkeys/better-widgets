@@ -92,6 +92,9 @@ final class TemplateStore {
         return "\(root)-\(n)"
     }
 
+    /// Public entry to the unique-id derivation (used by the .bwidget importer).
+    func freshUserID(base: String) -> String { uniqueID(base: base) }
+
     /// Scaffolds a new user template (valid default manifest + minimal HTML + `.user` marker) and returns its id.
     @discardableResult
     func createUserTemplate(name: String) -> String {

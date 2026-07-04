@@ -40,23 +40,28 @@ struct WeatherDataProvider: DataProvider {
     let minimumInterval: TimeInterval = 900
     let fetcher: WeatherFetching
     let geocoder: (String) async throws -> (lat: Double, lon: Double)
+    let location: LocationProvider
 
     init(fetcher: WeatherFetching,
-         geocoder: @escaping (String) async throws -> (lat: Double, lon: Double)) {
+         geocoder: @escaping (String) async throws -> (lat: Double, lon: Double),
+         location: LocationProvider = CoreLocationProvider()) {
         self.fetcher = fetcher
         self.geocoder = geocoder
+        self.location = location
     }
 
     func fetch(spec: SourceSpec, paramValues: [String: String]) async throws -> Any {
         let coords: (lat: Double, lon: Double)
-        if let latStr = spec.config?["lat"], let lonStr = spec.config?["lon"],
+        if spec.config?["useCurrentLocation"] == "true" {
+            coords = try await location.currentCoordinates()
+        } else if let latStr = spec.config?["lat"], let lonStr = spec.config?["lon"],
            let lat = Double(substituteParams(latStr, params: paramValues)),
            let lon = Double(substituteParams(lonStr, params: paramValues)) {
             coords = (lat, lon)
         } else if let city = spec.config?["city"] {
             coords = try await geocoder(substituteParams(city, params: paramValues))
         } else {
-            throw DataProviderError.missingConfig("weather source '\(spec.key)' requires lat+lon or city")
+            throw DataProviderError.missingConfig("weather source '\(spec.key)' requires lat+lon, city, or useCurrentLocation")
         }
         let weather = try await fetcher.currentWeather(latitude: coords.lat, longitude: coords.lon)
         return [
