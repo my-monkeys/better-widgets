@@ -33,13 +33,18 @@ struct CodeEditorBridge: NSViewRepresentable {
     }
 
     func updateNSView(_ webView: WKWebView, context: Context) {
+        // The binding itself can point at a different `@Published` property after this (e.g. a
+        // tab switch from index.html to manifest.json) — re-capture it every time, not just once
+        // in makeCoordinator(), or the JS->Swift echo below would keep writing into whichever
+        // property was active when the bridge was first created.
+        context.coordinator.text = $text
         context.coordinator.applyExternal(text: text, language: language)
     }
 
     func makeCoordinator() -> Coordinator { Coordinator($text) }
 
     final class Coordinator: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
-        private let text: Binding<String>
+        fileprivate var text: Binding<String>
         weak var webView: WKWebView?
         var pendingText = ""
         var pendingLanguage: Language = .html
