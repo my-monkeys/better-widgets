@@ -24,6 +24,8 @@
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Better Widgets lit vos évènements à venir pour les afficher dans un widget.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Better Widgets utilise votre position pour afficher la météo locale dans un widget.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>
 	<string>Better Widgets lit vos rappels à venir pour les afficher dans un widget.</string>
 </dict>

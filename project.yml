@@ -35,6 +35,7 @@ targets:
         com.apple.security.application-groups:
           - 5C67TFSJ2B.betterwidgets
         com.apple.security.personal-information.calendars: true
+        com.apple.security.personal-information.location: true
     info:
       path: BetterWidgets/Info.plist
       properties:
@@ -42,6 +43,7 @@ targets:
         CFBundleDisplayName: Better Widgets
         NSCalendarsFullAccessUsageDescription: "Better Widgets lit vos évènements à venir pour les afficher dans un widget."
         NSRemindersFullAccessUsageDescription: "Better Widgets lit vos rappels à venir pour les afficher dans un widget."
+        NSLocationWhenInUseUsageDescription: "Better Widgets utilise votre position pour afficher la météo locale dans un widget."
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgets
