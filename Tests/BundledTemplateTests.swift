@@ -113,4 +113,24 @@ final class BundledTemplateTests: XCTestCase {
         ]]]
         try await assertRenders("news", data: data)
     }
+
+    func testAgendaManifestValid() throws {
+        let m = try BundledTemplates.manifest("agenda")
+        XCTAssertEqual(m.sources.first?.type, "calendar")
+        XCTAssertTrue(m.sources.first?.requiresConsent ?? false)
+    }
+
+    @MainActor
+    func testAgendaRenders() async throws {
+        let data: [String: Any] = ["cal": ["events": [
+            ["title": "Sport", "start": "2026-07-07T12:00:00+02:00", "end": "2026-07-07T13:00:00+02:00", "allDay": false, "calendarColor": "green"],
+            ["title": "Concert", "start": "2026-07-07T20:00:00+02:00", "end": "2026-07-07T23:00:00+02:00", "allDay": false, "calendarColor": "blue"]
+        ]]]
+        try await assertRenders("agenda", data: data)
+    }
+
+    @MainActor
+    func testAgendaRendersDenied() async throws {
+        try await assertRenders("agenda", data: ["cal": ["__denied": true]])
+    }
 }
