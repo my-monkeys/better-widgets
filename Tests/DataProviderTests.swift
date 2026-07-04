@@ -77,7 +77,7 @@ final class DataProviderTests: XCTestCase {
         let provider = JSONDataProvider(urlSession: MockURLProtocol.session())
         let result = try await provider.fetch(
             spec: SourceSpec(key: "a", type: "json",
-                             config: ["url": "http://100.100.100.100:2300/api/x"]), paramValues: [:])
+                             config: ["url": "http://192.168.1.50:2300/api/x"]), paramValues: [:])
         let dict = try XCTUnwrap(result as? [String: Any])
         XCTAssertEqual(dict["ok"] as? Bool, true)
     }

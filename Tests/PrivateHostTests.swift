@@ -10,7 +10,7 @@ final class PrivateHostTests: XCTestCase {
     }
 
     func testTailscaleCGNATIsPrivate() {
-        // 100.64.0.0/10 — the range Tailscale hands out (homeserver = 100.100.100.100).
+        // 100.64.0.0/10 — the CGNAT range Tailscale hands out.
         for host in ["100.64.0.1", "100.100.100.100", "100.127.255.255"] {
             XCTAssertTrue(PrivateHost.isPrivate(host), "\(host) should be private")
         }
