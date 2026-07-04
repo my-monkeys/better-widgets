@@ -25,10 +25,12 @@ enum BWidgetImporter {
         do { entries = try BWidgetArchive.entries(in: data) }
         catch { throw ImportError.badArchive }
 
-        for entry in entries where !isSafeEntryPath(entry.path) {
-            throw ImportError.unsafeEntry(entry.path)
+        var seen = Set<String>()
+        for entry in entries {
+            guard isSafeEntryPath(entry.path) else { throw ImportError.unsafeEntry(entry.path) }
+            guard seen.insert(entry.path).inserted else { throw ImportError.unsafeEntry(entry.path) }
         }
-        let byPath = Dictionary(uniqueKeysWithValues: entries.map { ($0.path, $0.data) })
+        let byPath = Dictionary(entries.map { ($0.path, $0.data) }, uniquingKeysWith: { _, new in new })
         guard let manifestData = byPath["manifest.json"] else { throw ImportError.missingFile("manifest.json") }
         guard byPath["index.html"] != nil else { throw ImportError.missingFile("index.html") }
 
@@ -39,23 +41,27 @@ enum BWidgetImporter {
         // Fresh user id derived from the manifest name; rewrite manifest.id to it.
         let id = store.freshUserID(base: manifest.name)
         let dir = store.templateDirectory(id: id)
-        let root = dir.resolvingSymlinksInPath().standardizedFileURL
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let root = dir.resolvingSymlinksInPath().standardizedFileURL
 
-        for entry in entries {
-            let dest = dir.appendingPathComponent(entry.path).standardizedFileURL.resolvingSymlinksInPath()
-            guard dest.path == root.path || dest.path.hasPrefix(root.path + "/") else {
-                try? FileManager.default.removeItem(at: dir)
-                throw ImportError.unsafeEntry(entry.path)
+        do {
+            for entry in entries {
+                let dest = dir.appendingPathComponent(entry.path).standardizedFileURL.resolvingSymlinksInPath()
+                guard dest.path == root.path || dest.path.hasPrefix(root.path + "/") else {
+                    throw ImportError.unsafeEntry(entry.path)
+                }
+                try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(),
+                                                        withIntermediateDirectories: true)
+                let payload = entry.path == "manifest.json"
+                    ? try rewriteManifestID(manifestData, to: id)
+                    : entry.data
+                try payload.write(to: dest, options: .atomic)
             }
-            try FileManager.default.createDirectory(at: dest.deletingLastPathComponent(),
-                                                    withIntermediateDirectories: true)
-            let payload = entry.path == "manifest.json"
-                ? try rewriteManifestID(manifestData, to: id)
-                : entry.data
-            try payload.write(to: dest, options: .atomic)
+            try Data().write(to: dir.appendingPathComponent(".user"))
+        } catch {
+            try? FileManager.default.removeItem(at: dir)
+            throw error
         }
-        try Data().write(to: dir.appendingPathComponent(".user"))
         return id
     }
 

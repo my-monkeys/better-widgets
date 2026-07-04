@@ -66,6 +66,14 @@ final class BWidgetImporterTests: XCTestCase {
         }
     }
 
+    func testRejectsDuplicatePathWithoutCrashing() {
+        let data = archive([("manifest.json", validManifest), ("manifest.json", validManifest), ("index.html", "<b>x</b>")])
+        XCTAssertThrowsError(try BWidgetImporter.install(archive: data, into: store)) {
+            guard case ImportError.unsafeEntry = $0 else { return XCTFail("expected unsafeEntry") }
+        }
+        XCTAssertTrue(store.list().isEmpty)
+    }
+
     func testRejectsGarbageArchive() {
         XCTAssertThrowsError(try BWidgetImporter.install(archive: Data("not json".utf8), into: store)) {
             XCTAssertEqual($0 as? ImportError, .badArchive)
