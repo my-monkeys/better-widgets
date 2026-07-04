@@ -33,7 +33,7 @@ struct WidgetCard: View {
         VStack(alignment: .leading, spacing: DesignTokens.Space.sm) {
             preview
             HStack(spacing: DesignTokens.Space.sm) {
-                Circle().fill(DesignTokens.statusColor(model.status)).frame(width: 7, height: 7)
+                Circle().fill(DesignTokens.statusColor(model.status)).frame(width: DesignTokens.statusDotSize, height: DesignTokens.statusDotSize)
                 Text(model.instance.name).font(.system(size: DesignTokens.FontSize.title, weight: .semibold))
                 Spacer()
                 actions
@@ -45,12 +45,13 @@ struct WidgetCard: View {
         .padding(DesignTokens.Space.lg)
         .frame(width: model.cardWidth + DesignTokens.Space.lg * 2, alignment: .leading)
         .background(DesignTokens.surface)
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(DesignTokens.separator, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.card).stroke(DesignTokens.separator, lineWidth: 1))
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.card))
     }
 
     @ViewBuilder private var preview: some View {
-        let ratio: CGFloat = model.instance.size == .large ? 382.0 / 364.0 : (model.instance.size == .medium ? 170.0 / 364.0 : 1)
+        let size = model.instance.size.pointSize
+        let ratio: CGFloat = size.height / size.width
         ZStack {
             if let image {
                 Image(nsImage: image).resizable().scaledToFill()
@@ -62,7 +63,7 @@ struct WidgetCard: View {
             }
         }
         .frame(width: model.cardWidth, height: model.cardWidth * ratio)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .clipShape(RoundedRectangle(cornerRadius: DesignTokens.Radius.preview))
     }
 
     private var actions: some View {

@@ -43,4 +43,10 @@ enum DesignTokens {
     enum FontSize {
         static let caption: CGFloat = 11, label: CGFloat = 13, title: CGFloat = 18, titleXL: CGFloat = 28
     }
+
+    enum Radius {
+        static let card: CGFloat = 10
+        static let preview: CGFloat = 8
+    }
+    static let statusDotSize: CGFloat = 7
 }

@@ -20,4 +20,10 @@ final class DesignTokensTests: XCTestCase {
     func testAccentIsDefined() {
         XCTAssertNotNil(DesignTokens.accent)
     }
+
+    func testShapeTokens() {
+        XCTAssertGreaterThan(DesignTokens.Radius.card, 0)
+        XCTAssertGreaterThan(DesignTokens.Radius.preview, 0)
+        XCTAssertEqual(DesignTokens.statusDotSize, 7)
+    }
 }
