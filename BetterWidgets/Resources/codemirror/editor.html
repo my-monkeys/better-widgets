@@ -1,0 +1,31 @@
+<!doctype html>
+<html><head><meta charset="utf-8">
+<link rel="stylesheet" href="codemirror.min.css">
+<style>
+  html,body,.CodeMirror{height:100%;margin:0}
+  .CodeMirror{font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace}
+</style>
+<script src="codemirror.min.js"></script>
+<script src="mode/xml/xml.min.js"></script>
+<script src="mode/css/css.min.js"></script>
+<script src="mode/javascript/javascript.min.js"></script>
+<script src="mode/htmlmixed/htmlmixed.min.js"></script>
+</head><body>
+<textarea id="ta"></textarea>
+<script>
+  var cm = CodeMirror.fromTextArea(document.getElementById("ta"), {
+    lineNumbers: true, mode: "htmlmixed"
+  });
+  var suppress = false;
+  cm.on("change", function () {
+    if (suppress) return;
+    window.webkit.messageHandlers.bwEditor.postMessage(cm.getValue());
+  });
+  // Called from Swift.
+  window.bwSetContent = function (text, mode) {
+    suppress = true;
+    cm.setOption("mode", mode === "json" ? {name:"javascript", json:true} : "htmlmixed");
+    if (cm.getValue() !== text) cm.setValue(text);
+    suppress = false;
+  };
+</script></body></html>

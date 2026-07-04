@@ -17,7 +17,11 @@ targets:
       - path: BetterWidgets
         excludes:
           - "Resources/templates/**"
+          - "Resources/codemirror/**"
       - path: BetterWidgets/Resources/templates
+        type: folder
+        buildPhase: resources
+      - path: BetterWidgets/Resources/codemirror
         type: folder
         buildPhase: resources
     dependencies:
@@ -79,6 +83,8 @@ targets:
       - path: BetterWidgets/App/WidgetCard.swift
         optional: true
       - path: BetterWidgets/App/WidgetEditorModel.swift
+        optional: true
+      - path: BetterWidgets/App/TemplateEditorModel.swift
         optional: true
     settings:
       base:

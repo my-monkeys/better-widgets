@@ -5,25 +5,46 @@ import SwiftUI
 struct GalleryView: View {
     @ObservedObject var state: AppState
     var onCreated: (WidgetInstance) -> Void = { _ in }
+    @State private var editingTemplateId: IdentifiedString?
+    @State private var pendingDelete: String?
 
     private var templates: [TemplateManifest] { state.templates.list() }
 
     var body: some View {
         ScrollView {
-            if templates.isEmpty {
-                Text("Aucun template disponible.")
-                    .foregroundStyle(DesignTokens.textSecondary)
-                    .frame(maxWidth: .infinity, minHeight: 200)
-            } else {
-                VStack(alignment: .leading, spacing: DesignTokens.Space.lg) {
-                    ForEach(templates, id: \.id) { manifest in
-                        row(manifest)
-                    }
+            VStack(alignment: .leading, spacing: 0) {
+                Button("Nouveau template") {
+                    let id = state.templates.createUserTemplate(name: "Nouveau widget")
+                    editingTemplateId = IdentifiedString(id: id)
                 }
-                .padding(DesignTokens.Space.xxl)
+                .buttonStyle(.borderedProminent).tint(DesignTokens.accent)
+                .padding([.top, .horizontal], DesignTokens.Space.xxl)
+
+                if templates.isEmpty {
+                    Text("Aucun template disponible.")
+                        .foregroundStyle(DesignTokens.textSecondary)
+                        .frame(maxWidth: .infinity, minHeight: 200)
+                        .padding(.horizontal, DesignTokens.Space.xxl)
+                } else {
+                    VStack(alignment: .leading, spacing: DesignTokens.Space.lg) {
+                        ForEach(templates, id: \.id) { manifest in
+                            row(manifest)
+                        }
+                    }
+                    .padding(DesignTokens.Space.xxl)
+                }
             }
         }
         .background(DesignTokens.background)
+        .sheet(item: $editingTemplateId) { identified in
+            TemplateCodeEditorView(state: state, templateId: identified.id) { editingTemplateId = nil }
+        }
+        .confirmationDialog("Supprimer ce template ?", isPresented: Binding(
+            get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
+            presenting: pendingDelete) { id in
+            Button("Supprimer", role: .destructive) { state.templates.deleteUserTemplate(id: id); pendingDelete = nil }
+            Button("Annuler", role: .cancel) { pendingDelete = nil }
+        } message: { _ in Text("Les widgets basés dessus afficheront un placeholder.") }
     }
 
     private func row(_ manifest: TemplateManifest) -> some View {
@@ -37,13 +58,22 @@ struct GalleryView: View {
                 }
             }
             Spacer()
-            Menu("Créer") {
+            Menu {
                 ForEach(manifest.sizes, id: \.self) { size in
-                    Button(size.rawValue) { onCreated(state.createInstance(templateId: manifest.id, size: size)) }
+                    Button("Créer — \(size.rawValue)") { onCreated(state.createInstance(templateId: manifest.id, size: size)) }
                 }
-            }
-            .menuStyle(.borderlessButton).fixedSize()
-            .tint(DesignTokens.accent)
+                Divider()
+                Button("Forker") {
+                    if let id = try? state.templates.forkTemplate(from: manifest.id) {
+                        editingTemplateId = IdentifiedString(id: id)
+                    }
+                }
+                if state.templates.isUserTemplate(id: manifest.id) {
+                    Button("Éditer le code") { editingTemplateId = IdentifiedString(id: manifest.id) }
+                    Button("Supprimer", role: .destructive) { pendingDelete = manifest.id }
+                }
+            } label: { Image(systemName: "ellipsis.circle") }
+            .menuStyle(.borderlessButton).fixedSize().tint(DesignTokens.accent)
         }
         .padding(DesignTokens.Space.lg)
         .background(DesignTokens.surface)
@@ -57,4 +87,9 @@ struct GalleryView: View {
             .foregroundStyle(DesignTokens.textSecondary)
             .overlay(Capsule().stroke(DesignTokens.separator, lineWidth: 1))
     }
+}
+
+/// `.sheet(item:)` needs `Identifiable`; a template id (`String`) doesn't carry that on its own.
+struct IdentifiedString: Identifiable {
+    let id: String
 }
