@@ -17,6 +17,7 @@ final class WidgetCardModelTests: XCTestCase {
 
     func testStatusLabels() {
         XCTAssertEqual(model(.ok).statusLabel, "À jour")
+        XCTAssertEqual(model(.pending).statusLabel, "En cours")
         XCTAssertEqual(model(.stale).statusLabel, "Données périmées")
         XCTAssertEqual(model(.error("x")).statusLabel, "Erreur")
     }

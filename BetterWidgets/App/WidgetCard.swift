@@ -10,6 +10,7 @@ struct WidgetCardModel {
     var statusLabel: String {
         switch status {
         case .ok: return "À jour"
+        case .pending: return "En cours"
         case .stale: return "Données périmées"
         case .error: return "Erreur"
         }

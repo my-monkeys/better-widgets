@@ -68,8 +68,12 @@ final class AppStateTests: XCTestCase {
     func testStatusMapping() throws {
         let (state, _) = makeState()
         let a = state.createInstance(templateId: "hello-clock", size: .small)
+        // Never rendered (no state file → lastRenderAt nil): pending, not ok.
+        XCTAssertEqual(state.status(for: a.id), .pending)
+        var rendered = InstanceState(); rendered.lastRenderAt = Date()
+        try shared.saveState(rendered, instanceId: a.id)
         XCTAssertEqual(state.status(for: a.id), .ok)
-        var s = InstanceState(); s.stale = true
+        var s = InstanceState(); s.lastRenderAt = Date(); s.stale = true
         try shared.saveState(s, instanceId: a.id)
         XCTAssertEqual(state.status(for: a.id), .stale)
         var e = InstanceState(); e.lastError = "boom"

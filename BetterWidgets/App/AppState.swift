@@ -2,7 +2,7 @@ import Foundation
 import SwiftUI
 
 enum InstanceStatus: Equatable {
-    case ok, stale, error(String)
+    case ok, pending, stale, error(String)
 }
 
 @MainActor
@@ -54,6 +54,7 @@ final class AppState: ObservableObject {
         switch status(for: instance.id) {
         case .error(let msg): return "⚠︎ \(instance.name) — \(msg.prefix(40))"
         case .stale: return "◔ \(instance.name) — données périmées"
+        case .pending: return "◌ \(instance.name) — en cours"
         case .ok: return "● \(instance.name)"
         }
     }
@@ -89,6 +90,7 @@ final class AppState: ObservableObject {
     func status(for id: UUID) -> InstanceStatus {
         let state = shared.loadState(instanceId: id)
         if let error = state.lastError { return .error(error) }
+        if state.lastRenderAt == nil { return .pending }
         if state.stale { return .stale }
         return .ok
     }

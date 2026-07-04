@@ -30,6 +30,7 @@ enum DesignTokens {
     static func statusColor(_ status: InstanceStatus) -> Color {
         switch status {
         case .ok: return statusOK
+        case .pending: return textSecondary
         case .stale: return statusStale
         case .error: return statusError
         }

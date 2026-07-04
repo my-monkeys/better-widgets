@@ -8,26 +8,36 @@ struct MyWidgetsView: View {
     @State private var pendingDelete: WidgetInstance?
     @State private var guideShown = false
 
-    private let columns = [GridItem(.adaptive(minimum: 220), spacing: DesignTokens.Space.xl)]
+    // Must be >= the widest card's frame width (medium/large cards are 340pt wide + Space.lg
+    // padding on each side), or a card clips/overflows its adaptive column in a narrow window.
+    private let columns = [GridItem(.adaptive(minimum: 340 + DesignTokens.Space.lg * 2),
+                                    spacing: DesignTokens.Space.xl)]
 
     var body: some View {
         Group {
             if state.instances.isEmpty {
                 emptyState
             } else {
-                ScrollView {
-                    LazyVGrid(columns: columns, alignment: .leading, spacing: DesignTokens.Space.xl) {
-                        ForEach(state.instances) { instance in
-                            WidgetCard(
-                                model: WidgetCardModel(instance: instance,
-                                                       status: state.status(for: instance.id),
-                                                       rendersDir: state.shared.renderURL),
-                                onDuplicate: { _ = state.duplicateInstance(instance.id) },
-                                onDelete: { pendingDelete = instance },
-                                onAddToDesktop: { guideShown = true })
+                // Neither the render PNGs nor `InstanceState` (status) are `@Published` — they're
+                // written by a background worker after `instances` is mutated. This periodic
+                // re-evaluation is what makes a completed background render (or a status
+                // transition) show up in an already-open window, within ~2s, without adding a
+                // second observable data model.
+                TimelineView(.periodic(from: .now, by: 2)) { _ in
+                    ScrollView {
+                        LazyVGrid(columns: columns, alignment: .leading, spacing: DesignTokens.Space.xl) {
+                            ForEach(state.instances) { instance in
+                                WidgetCard(
+                                    model: WidgetCardModel(instance: instance,
+                                                           status: state.status(for: instance.id),
+                                                           rendersDir: state.shared.renderURL),
+                                    onDuplicate: { _ = state.duplicateInstance(instance.id) },
+                                    onDelete: { pendingDelete = instance },
+                                    onAddToDesktop: { guideShown = true })
+                            }
                         }
+                        .padding(DesignTokens.Space.xxl)
                     }
-                    .padding(DesignTokens.Space.xxl)
                 }
             }
         }
