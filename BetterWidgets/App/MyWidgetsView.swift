@@ -8,6 +8,7 @@ struct MyWidgetsView: View {
     @State private var pendingDelete: WidgetInstance?
     @State private var guideShown = false
     @State private var editing: WidgetInstance?
+    @State private var permissionInstance: WidgetInstance?
 
     // Must be >= the widest card's frame width (medium/large cards are 340pt wide + Space.lg
     // padding on each side), or a card clips/overflows its adaptive column in a narrow window.
@@ -35,7 +36,8 @@ struct MyWidgetsView: View {
                                     onEdit: { editing = instance },
                                     onDuplicate: { _ = state.duplicateInstance(instance.id) },
                                     onDelete: { pendingDelete = instance },
-                                    onAddToDesktop: { guideShown = true })
+                                    onAddToDesktop: { guideShown = true },
+                                    onPermissions: templateRequiresConsent(instance) ? { permissionInstance = instance } : nil)
                             }
                         }
                         .padding(DesignTokens.Space.xxl)
@@ -55,6 +57,19 @@ struct MyWidgetsView: View {
         .sheet(item: $editing) { instance in
             WidgetEditorView(state: state, instance: instance) { editing = nil }
         }
+        .sheet(item: $permissionInstance) { instance in
+            if let manifest = try? state.templates.manifest(id: instance.templateId) {
+                PermissionConsentView(
+                    model: PermissionConsentModel(instanceId: instance.id, manifest: manifest,
+                                                  permissions: state.permissions)) {
+                    permissionInstance = nil
+                }
+            }
+        }
+    }
+
+    private func templateRequiresConsent(_ instance: WidgetInstance) -> Bool {
+        (try? state.templates.manifest(id: instance.templateId))?.sources.contains { $0.requiresConsent } ?? false
     }
 
     /// `confirmationDialog` needs a writable binding: a dismissal from outside the two

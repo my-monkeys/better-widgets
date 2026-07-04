@@ -26,6 +26,7 @@ struct WidgetCard: View {
     let onDuplicate: () -> Void
     let onDelete: () -> Void
     let onAddToDesktop: () -> Void
+    let onPermissions: (() -> Void)?
 
     private var image: NSImage? {
         NSImage(contentsOf: model.imageURL(dark: colorScheme == .dark))
@@ -73,6 +74,9 @@ struct WidgetCard: View {
             Button("Éditer", action: onEdit)
             Button("Dupliquer", action: onDuplicate)
             Button("Ajouter au bureau…", action: onAddToDesktop)
+            if let onPermissions {
+                Button("Permissions…", action: onPermissions)
+            }
             Divider()
             Button("Supprimer", role: .destructive, action: onDelete)
         } label: {
