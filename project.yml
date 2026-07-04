@@ -74,6 +74,10 @@ targets:
       - Tests
       - path: BetterWidgets/Core
         optional: true
+      - path: BetterWidgets/App/AppState.swift
+        optional: true
+      - path: BetterWidgets/App/WidgetCard.swift
+        optional: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgetsTests

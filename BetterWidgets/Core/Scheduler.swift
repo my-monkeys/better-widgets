@@ -21,6 +21,10 @@ final class Scheduler {
     init(refresher: any Refreshing, templates: TemplateStore) {
         self.refresher = refresher
         self.templates = templates
+        spawnWorker()
+    }
+
+    private func spawnWorker() {
         let (stream, continuation) = AsyncStream.makeStream(of: WidgetInstance.self)
         queueContinuation = continuation
         worker = Task { [refresher] in
@@ -28,6 +32,17 @@ final class Scheduler {
                 await refresher.refresh(instance)
             }
         }
+    }
+
+    /// Tears down and recreates the serial queue, then starts timers/refreshes.
+    /// Needed because `stop()` finishes the stream — a plain `start()` afterwards
+    /// would enqueue into a dead continuation (no-op). Called on every instance-list change.
+    func restart(instances: [WidgetInstance]) {
+        stopTimers()
+        queueContinuation?.finish()
+        worker?.cancel()
+        spawnWorker()
+        start(instances: instances)
     }
 
     func start(instances: [WidgetInstance]) {
@@ -63,3 +78,11 @@ final class Scheduler {
         timers.removeAll()
     }
 }
+
+@MainActor
+protocol InstanceScheduling {
+    func restart(instances: [WidgetInstance])
+    func refreshAllNow(instances: [WidgetInstance])
+}
+
+extension Scheduler: InstanceScheduling {}

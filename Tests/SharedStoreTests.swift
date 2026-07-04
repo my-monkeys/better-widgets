@@ -42,4 +42,21 @@ final class SharedStoreTests: XCTestCase {
         try store.saveState(s, instanceId: id)
         XCTAssertEqual(store.loadState(instanceId: id), s)
     }
+
+    func testRemoveInstanceDeletesRendersAndState() throws {
+        let id = UUID()
+        try store.writeRender(Data("l".utf8), instanceId: id, theme: .light)
+        try store.writeRender(Data("d".utf8), instanceId: id, theme: .dark)
+        try store.saveState(InstanceState(stale: true), instanceId: id)
+
+        store.removeInstance(id: id)
+
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.renderURL(instanceId: id, theme: .light).path))
+        XCTAssertFalse(FileManager.default.fileExists(atPath: store.renderURL(instanceId: id, theme: .dark).path))
+        XCTAssertEqual(store.loadState(instanceId: id), InstanceState()) // state file gone → default
+    }
+
+    func testRemoveInstanceIsNoOpWhenAbsent() {
+        store.removeInstance(id: UUID()) // must not throw/crash
+    }
 }
