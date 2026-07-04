@@ -49,7 +49,7 @@ struct TemplateCodeEditorView: View {
                 .frame(width: (model.previewManifest()?.sizes.first ?? .small).pointSize.width,
                        height: (model.previewManifest()?.sizes.first ?? .small).pointSize.height)
                 .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.preview).stroke(DesignTokens.separator, lineWidth: 1))
-            if model.previewManifest() == nil {
+            if case .failure = model.validate() {
                 Text("manifest invalide — aperçu figé").font(.system(size: DesignTokens.FontSize.caption))
                     .foregroundStyle(DesignTokens.statusStale)
             }
@@ -66,9 +66,13 @@ struct TemplateCodeEditorView: View {
             Button("Enregistrer") {
                 switch model.validate() {
                 case .success:
-                    validationError = nil
-                    try? model.save(into: state.templates)
-                    Task { await fetchPreviewData() }
+                    do {
+                        try model.save(into: state.templates)
+                        validationError = nil
+                        Task { await fetchPreviewData() }
+                    } catch {
+                        validationError = model.errorMessage(error)
+                    }
                 case .failure(let e):
                     validationError = model.errorMessage(e)
                 }

@@ -53,10 +53,14 @@ struct CodeEditorBridge: NSViewRepresentable {
 
         init(_ text: Binding<String>) { self.text = text }
 
-        // Text edited in CodeMirror flows back to the SwiftUI binding.
+        // Text edited in CodeMirror flows back to the SwiftUI binding. WKScriptMessageHandler
+        // callbacks are always delivered on the main thread, so this writes synchronously on the
+        // main actor at receipt — no `Task { @MainActor in ... }` hop, and therefore no window
+        // for a tab switch (which re-points `self.text` in `updateNSView`) to land the edit in
+        // the wrong tab's binding.
         nonisolated func userContentController(_ ucc: WKUserContentController, didReceive message: WKScriptMessage) {
             guard let value = message.body as? String else { return }
-            Task { @MainActor in
+            MainActor.assumeIsolated {
                 self.lastSet = value
                 self.text.wrappedValue = value
             }

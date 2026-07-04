@@ -13,18 +13,32 @@ final class TemplateEditorModel: ObservableObject {
     @Published var manifestText: String
     @Published var tab: Tab = .html
 
+    /// Last manifest that successfully validated — the preview freezes on this when
+    /// `manifestText` is transiently invalid mid-edit (spec §6/§10).
+    private var lastValidManifest: TemplateManifest?
+
     init(templateId: String, store: TemplateStore) {
         self.templateId = templateId
         self.htmlText = (try? store.html(id: templateId)) ?? ""
         let manifestURL = store.templateDirectory(id: templateId).appendingPathComponent("manifest.json")
         self.manifestText = (try? String(contentsOf: manifestURL, encoding: .utf8)) ?? ""
+        self.lastValidManifest = try? TemplateManifest.validated(from: Data(manifestText.utf8))
     }
 
     func validate() -> Result<TemplateManifest, Error> {
         Result { try TemplateManifest.validated(from: Data(manifestText.utf8)) }
     }
 
-    func previewManifest() -> TemplateManifest? { try? validate().get() }
+    /// The manifest to preview with: the current text when it validates, otherwise the last
+    /// one that did. This is what keeps the live preview from resetting to `.small`/defaults
+    /// on every invalid keystroke while the manifest tab is mid-edit.
+    func previewManifest() -> TemplateManifest? {
+        if let current = try? validate().get() {
+            lastValidManifest = current
+            return current
+        }
+        return lastValidManifest
+    }
 
     func previewContext(data: [String: Any], stale: Bool) -> RenderContext {
         let manifest = previewManifest()

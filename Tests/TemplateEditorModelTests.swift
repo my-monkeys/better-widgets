@@ -44,4 +44,21 @@ final class TemplateEditorModelTests: XCTestCase {
         try model.save(into: store)
         XCTAssertEqual(try store.html(id: id), "<i>edited</i>")
     }
+
+    func testPreviewManifestFreezesOnLastValidWhenCurrentInvalid() throws {
+        let id = store.createUserTemplate(name: "T")
+        let model = TemplateEditorModel(templateId: id, store: store)
+        model.manifestText = ##"{"id":"t","name":"T","version":"1.0.0","sizes":["medium"],"refresh":900,"params":[],"sources":[]}"##
+        guard let validPreview = model.previewManifest() else {
+            return XCTFail("expected valid manifest to preview")
+        }
+        XCTAssertEqual(validPreview.sizes, [.medium])
+
+        model.manifestText = "not json"
+
+        if case .success = model.validate() { XCTFail("current text should be invalid") }
+        let frozen = model.previewManifest()
+        XCTAssertNotNil(frozen)
+        XCTAssertEqual(frozen?.sizes, [.medium])
+    }
 }
