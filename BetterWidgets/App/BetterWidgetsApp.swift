@@ -14,7 +14,7 @@ struct BetterWidgetsApp: App {
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
-        WindowGroup(id: "main") {
+        Window("Better Widgets", id: "main") {
             MainWindowView(state: state)
         }
         .windowResizability(.contentMinSize)
