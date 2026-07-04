@@ -64,4 +64,21 @@ final class BundledTemplateTests: XCTestCase {
         ]]
         try await assertRenders("weather", data: data)
     }
+
+    func testCryptoManifestValid() throws {
+        let m = try BundledTemplates.manifest("crypto")
+        XCTAssertEqual(m.sources.count, 2)
+        XCTAssertEqual(Set(m.sources.map { $0.key }), ["price", "chart"])
+    }
+
+    @MainActor
+    func testCryptoRenders() async throws {
+        let prices: [Double] = (0..<48).map { 66000 + Double($0) * 40 }
+        let data: [String: Any] = [
+            "price": ["bitcoin": ["usd": 67432, "usd_24h_change": 2.4],
+                      "ethereum": ["usd": 3518, "usd_24h_change": -1.1]],
+            "chart": ["prices": prices.map { [1_700_000_000_000.0, $0] }]
+        ]
+        try await assertRenders("crypto", data: data)
+    }
 }

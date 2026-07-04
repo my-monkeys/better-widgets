@@ -1,0 +1,15 @@
+{
+  "id": "crypto", "name": "Crypto", "version": "1.0.0",
+  "sizes": ["small", "medium"], "refresh": 300,
+  "params": [
+    { "key": "ids", "type": "string", "label": "Cryptos (ids CoinGecko)", "default": "bitcoin,ethereum" },
+    { "key": "vs", "type": "string", "label": "Devise", "default": "usd" },
+    { "key": "chart_id", "type": "string", "label": "Courbe (id)", "default": "bitcoin" }
+  ],
+  "sources": [
+    { "key": "price", "type": "json",
+      "config": { "url": "https://api.coingecko.com/api/v3/simple/price?ids={{ids}}&vs_currencies={{vs}}&include_24hr_change=true" } },
+    { "key": "chart", "type": "json",
+      "config": { "url": "https://api.coingecko.com/api/v3/coins/{{chart_id}}/market_chart?vs_currency={{vs}}&days=1" } }
+  ]
+}
