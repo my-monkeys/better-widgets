@@ -1,0 +1,202 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from dogfood/dashboard/index.html. Every later
+   bundled template starts from this same block.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — weather
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:12px 14px}
+[data-size="small"] .wrap{align-items:center;justify-content:center;text-align:center}
+
+.hd{flex:0 0 auto;margin-bottom:6px}
+.hd .place{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:-.01em}
+[data-size="small"] .hd{margin-bottom:2px}
+
+.now{flex:1 1 auto;min-height:0;display:flex;align-items:center;gap:12px}
+[data-size="small"] .now{flex-direction:column;justify-content:center;gap:2px}
+.now .wico{display:inline-flex;flex:0 0 auto}
+.now .wico svg{width:34px;height:34px;display:block}
+[data-size="medium"] .now .wico svg{width:28px;height:28px}
+[data-size="small"] .now .wico svg{width:40px;height:40px}
+.now .meta{display:flex;flex-direction:column;gap:1px;min-width:0}
+.now .temp{font-size:40px;font-weight:700;letter-spacing:-.03em;line-height:1}
+[data-size="medium"] .now .temp{font-size:30px}
+[data-size="small"] .now .temp{font-size:36px}
+.now .cond{font-size:12.5px;color:var(--text-2);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center}
+
+.fc{display:flex;gap:6px;flex:0 0 auto}
+.fc .day{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:3px;
+  background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 2px}
+.fc .dname{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--text-3)}
+.fc .wico svg{width:15px;height:15px;display:block}
+[data-size="medium"] .fc .wico svg{width:13px;height:13px}
+.fc .hi{font-size:12px;font-weight:700}
+.fc .lo{font-size:10.5px;color:var(--text-3);font-weight:500}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from dogfood/dashboard/index.html and
+   dogfood/gallery.html. Every later bundled template starts
+   from this same block, adding whatever icons/helpers it needs.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* icons — Font Awesome free solid, inlined (CSP-safe, currentColor) */
+var ICON={
+sun:'<svg viewBox="0 0 576 512"><path fill="currentColor" d="M288-32c8.4 0 16.3 4.4 20.6 11.7L364.1 72.3 468.9 46c8.2-2 16.9 .4 22.8 6.3S500 67 498 75.1l-26.3 104.7 92.7 55.5c7.2 4.3 11.7 12.2 11.7 20.6s-4.4 16.3-11.7 20.6L471.7 332.1 498 436.8c2 8.2-.4 16.9-6.3 22.8S477 468 468.9 466l-104.7-26.3-55.5 92.7c-4.3 7.2-12.2 11.7-20.6 11.7s-16.3-4.4-20.6-11.7L211.9 439.7 107.2 466c-8.2 2-16.8-.4-22.8-6.3S76 445 78 436.8l26.2-104.7-92.6-55.5C4.4 272.2 0 264.4 0 256s4.4-16.3 11.7-20.6L104.3 179.9 78 75.1c-2-8.2 .3-16.8 6.3-22.8S99 44 107.2 46l104.7 26.2 55.5-92.6 1.8-2.6c4.5-5.7 11.4-9.1 18.8-9.1zm0 144a144 144 0 1 0 0 288 144 144 0 1 0 0-288zm0 240a96 96 0 1 1 0-192 96 96 0 1 1 0 192z"/></svg>',
+cloudSun:'<svg viewBox="0 0 640 512"><path fill="currentColor" d="M208.3 192c43.1 0 80.5 24.4 99.2 60.1 14.7-17.2 36.4-28.1 60.8-28.1 44.2 0 80 35.8 80 80 0 5.5-.6 10.9-1.6 16 .5 0 1.1 0 1.6 0 53 0 96 43 96 96s-43 96-96 96l-320 0c-53 0-96-43-96-96 0-42.5 27.7-78.5 66-91.2-1.3-6.8-2-13.7-2-20.8 0-61.9 50.1-112 112-112zm192-223.8c5.3 0 10.3 2.7 13.3 7.1l47.3 70.4 83.3-16.3c5.2-1 10.6 .7 14.3 4.4 3.8 3.8 5.4 9.2 4.4 14.4l-16.3 83.3 70.4 47.3c4.4 3 7.1 8 7.1 13.3 0 5.3-2.6 10.3-7 13.2l-70.4 47.3 14.5 74.2c-17.2-21.7-40.4-38.4-67.2-47.3-2.5-12.7-6.9-24.6-12.8-35.7 9.6-14.9 15.2-32.7 15.2-51.7 0-53-43-96-96-96-47.9 0-87.6 35.1-94.8 80.9-20.9-16-45.9-27-73.1-31.1l21.5-14.5-16.3-83.2-.3-2c-.3-4.6 1.3-9.1 4.6-12.4 3.8-3.8 9.2-5.4 14.4-4.4l83.3 16.3 47.3-70.4 1.2-1.6c3-3.5 7.4-5.5 12.1-5.5zm0 175.8c26.5 0 48 21.5 48 48 0 3.8-.5 7.6-1.4 11.1-21.7-16.9-48.9-27.1-78.6-27.1-4.6 0-9.1 .2-13.5 .7 6.4-19 24.3-32.7 45.5-32.7z"/></svg>',
+cloud:'<svg viewBox="0 0 576 512"><path fill="currentColor" d="M0 336c0 79.5 64.5 144 144 144l304 0c70.7 0 128-57.3 128-128 0-51.6-30.5-96.1-74.5-116.3 6.7-13.1 10.5-28 10.5-43.7 0-53-43-96-96-96-17.7 0-34.2 4.8-48.4 13.1-24.1-45.8-72.2-77.1-127.6-77.1-79.5 0-144 64.5-144 144 0 8 .7 15.9 1.9 23.5-56.9 19.2-97.9 73.1-97.9 136.5z"/></svg>',
+smog:'<svg viewBox="0 0 576 512"><path fill="currentColor" d="M176 288C96.5 288 32 223.5 32 144S96.5 0 176 0c27.2 0 52.6 7.5 74.3 20.6 20.1-13 44-20.6 69.7-20.6 47.4 0 88.7 25.7 110.9 64l1.1 0c61.9 0 112 50.1 112 112 0 60.3-47.6 109.4-107.2 111.9-22.6 20-52.3 32.1-84.8 32.1-32.5 0-62.1-12.1-84.7-32L176 288zM512 392c0 13.3-10.7 24-24 24L24 416c-13.3 0-24-10.7-24-24s10.7-24 24-24l464 0c13.3 0 24 10.7 24 24zM88 464l80 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-80 0c-13.3 0-24-10.7-24-24s10.7-24 24-24zm176 0l288 0c13.3 0 24 10.7 24 24s-10.7 24-24 24l-288 0c-13.3 0-24-10.7-24-24s10.7-24 24-24z"/></svg>',
+rain:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M96 320c-53 0-96-43-96-96 0-42.5 27.6-78.6 65.9-91.2-1.3-6.7-1.9-13.7-1.9-20.8 0-61.9 50.1-112 112-112 43.1 0 80.5 24.3 99.2 60 14.7-17.1 36.5-28 60.8-28 44.2 0 80 35.8 80 80 0 5.5-.6 10.8-1.6 16 .5 0 1.1 0 1.6 0 53 0 96 43 96 96s-43 96-96 96L96 320zm1.6 68.2c1.1-2.5 3.6-4.2 6.4-4.2s5.3 1.6 6.4 4.2l30.2 68.2c2.2 5.1 3.4 10.5 3.4 16 0 21.9-18.1 39.6-40 39.6s-40-17.7-40-39.6c0-5.5 1.2-11 3.4-16l30.2-68.2zm152 0c1.1-2.5 3.6-4.2 6.4-4.2s5.3 1.6 6.4 4.2l30.2 68.2c2.2 5.1 3.4 10.5 3.4 16 0 21.9-18.1 39.6-40 39.6s-40-17.7-40-39.6c0-5.5 1.2-11 3.4-16l30.2-68.2zm121.8 68.2l30.2-68.2c1.1-2.5 3.6-4.2 6.4-4.2s5.3 1.6 6.4 4.2l30.2 68.2c2.2 5.1 3.4 10.5 3.4 16 0 21.9-18.1 39.6-40 39.6s-40-17.7-40-39.6c0-5.5 1.2-11 3.4-16z"/></svg>',
+snow:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M288.2 0c0-17.7-14.3-32-32-32s-32 14.3-32 32l0 62.1-15-15c-9.4-9.4-24.6-9.4-33.9 0s-9.4 24.6 0 33.9l49 49 0 70.6-61.2-35.3-17.9-66.9c-3.4-12.8-16.6-20.4-29.4-17S95.3 98 98.7 110.8l5.5 20.5-53.7-31C35.2 91.5 15.6 96.7 6.8 112s-3.6 34.9 11.7 43.7l53.7 31-20.5 5.5c-12.8 3.4-20.4 16.6-17 29.4s16.6 20.4 29.4 17l66.9-17.9 61.2 35.3-61.2 35.3-66.9-17.9c-12.8-3.4-26 4.2-29.4 17s4.2 26 17 29.4l20.5 5.5-53.7 31C3.2 365.1-2 384.7 6.8 400s28.4 20.6 43.7 11.7l53.7-31-5.5 20.5c-3.4 12.8 4.2 26 17 29.4s26-4.2 29.4-17l17.9-66.9 61.2-35.3 0 70.6-49 49c-9.4 9.4-9.4 24.6 0 33.9s24.6 9.4 33.9 0l15-15 0 62.1c0 17.7 14.3 32 32 32s32-14.3 32-32l0-62.1 15 15c9.4 9.4 24.6 9.4 33.9 0s9.4-24.6 0-33.9l-49-49 0-70.6 61.2 35.3 17.9 66.9c3.4 12.8 16.6 20.4 29.4 17s20.4-16.6 17-29.4l-5.5-20.5 53.7 31c15.3 8.8 34.9 3.6 43.7-11.7s3.6-34.9-11.7-43.7l-53.7-31 20.5-5.5c12.8-3.4 20.4-16.6 17-29.4s-16.6-20.4-29.4-17l-66.9 17.9-61.2-35.3 61.2-35.3 66.9 17.9c12.8 3.4 26-4.2 29.4-17s-4.2-26-17-29.4l-20.5-5.5 53.7-31c15.3-8.8 20.6-28.4 11.7-43.7s-28.4-20.5-43.7-11.7l-53.7 31 5.5-20.5c3.4-12.8-4.2-26-17-29.4s-26 4.2-29.4 17l-17.9 66.9-61.2 35.3 0-70.6 49-49c9.4-9.4 9.4-24.6 0-33.9s-24.6-9.4-33.9 0l-15 15 0-62.1z"/></svg>',
+bolt:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M0 224c0 53 43 96 96 96l38.6 0 124.1-111c12.2-10.9 28-17 44.4-17 44.6 0 76.5 43 63.7 85.7L354.1 320 416 320c53 0 96-43 96-96s-43-96-96-96c-.5 0-1.1 0-1.6 0 1.1-5.2 1.6-10.5 1.6-16 0-44.2-35.8-80-80-80-24.3 0-46.1 10.9-60.8 28-18.7-35.7-56.1-60-99.2-60-61.9 0-112 50.1-112 112 0 7.1 .7 14.1 1.9 20.8-38.3 12.6-65.9 48.7-65.9 91.2zM160.6 400l61.8 0-31.2 104.1c-3.6 11.9 5.3 23.9 17.8 23.9 4.6 0 9-1.7 12.4-4.7L362.5 396.9c3.5-3.1 5.5-7.6 5.5-12.4 0-9.2-7.4-16.6-16.6-16.6l-61.8 0 31.2-104.1c3.6-11.9-5.3-23.9-17.8-23.9-4.6 0-9 1.7-12.4 4.7L149.5 371.1c-3.5 3.1-5.5 7.6-5.5 12.4 0 9.2 7.4 16.6 16.6 16.6z"/></svg>'
+};
+function wxIcon(c){ return c===0?ICON.sun: c<=2?ICON.cloudSun: c===3?ICON.cloud:
+  c<=48?ICON.smog: c<=65?ICON.rain: c<=77?ICON.snow: c<=82?ICON.rain: c<=86?ICON.snow: ICON.bolt; }
+function wxColor(c){ return c<=1?'var(--orange)': c<=48?'var(--text-2)': c<=86?'var(--accent)':'var(--purple)'; }
+
+/* smooth sparklines: Catmull-Rom → cubic bézier (Chart.js-like tension), zero-dependency */
+function pointsOf(vals,w,h,pad,mn,mx){
+  var rng=(mx-mn)||1,n=vals.length;
+  return vals.map(function(v,i){
+    return [ (n===1?w/2:i/(n-1)*w), h-pad-((v-mn)/rng)*(h-2*pad) ];
+  });
+}
+function smooth(p){
+  if(!p.length) return '';
+  if(p.length===1) return 'M'+p[0][0].toFixed(1)+' '+p[0][1].toFixed(1);
+  var d='M'+p[0][0].toFixed(1)+' '+p[0][1].toFixed(1);
+  for(var i=0;i<p.length-1;i++){
+    var p0=p[i-1]||p[i],p1=p[i],p2=p[i+1],p3=p[i+2]||p2;
+    var c1x=p1[0]+(p2[0]-p0[0])/6, c1y=p1[1]+(p2[1]-p0[1])/6;
+    var c2x=p2[0]-(p3[0]-p1[0])/6, c2y=p2[1]-(p3[1]-p1[1])/6;
+    d+=' C'+c1x.toFixed(1)+' '+c1y.toFixed(1)+' '+c2x.toFixed(1)+' '+c2y.toFixed(1)+' '+p2[0].toFixed(1)+' '+p2[1].toFixed(1);
+  }
+  return d;
+}
+function spark(vals,col,h){
+  h=h||40;
+  var w=100,pad=4,mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+  var d=smooth(pointsOf(vals,w,h,pad,mn,mx));
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
+    '<path d="'+d+' L '+w+' '+h+' L 0 '+h+' Z" style="fill:'+col+';fill-opacity:.14"/>'+
+    '<path d="'+d+'" vector-effect="non-scaling-stroke" style="fill:none;stroke:'+col+';stroke-width:2px;stroke-linecap:round;stroke-linejoin:round"/></svg>';
+}
+function ring(pct,col,r){
+  var C=2*Math.PI*r, off=C*(1-pct);
+  return '<circle cx="0" cy="0" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="7"/>'+
+    '<circle cx="0" cy="0" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90)"/>';
+}
+
+/* ============================================================
+   Template logic — weather (open-meteo daily forecast)
+   ============================================================ */
+var DOW=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+function dayLabel(iso){
+  var p=iso.split('-').map(Number);
+  var dt=new Date(Date.UTC(p[0],p[1]-1,p[2]));
+  return DOW[dt.getUTCDay()];
+}
+function wmoLabel(c){
+  if(c===0) return 'Ciel clair';
+  if(c<=2) return 'Partiellement nuageux';
+  if(c===3) return 'Couvert';
+  if(c<=48) return 'Brouillard';
+  if(c<=57) return 'Bruine';
+  if(c<=65) return 'Pluie';
+  if(c<=67) return 'Pluie verglaçante';
+  if(c<=75) return 'Neige';
+  if(c===77) return 'Neige en grains';
+  if(c<=82) return 'Averses';
+  if(c<=86) return 'Averses de neige';
+  return 'Orage';
+}
+
+function forecastRow(daily){
+  if(!daily || !Array.isArray(daily.time) || !daily.time.length) return '';
+  var n=daily.time.length, start=n>1?1:0, end=Math.min(start+4,n), days='';
+  for(var i=start;i<end;i++){
+    var code=(typeof daily.weather_code[i]==='number')?daily.weather_code[i]:3;
+    days+='<div class="day"><div class="dname">'+dayLabel(daily.time[i])+'</div>'+
+      '<span class="wico" style="color:'+wxColor(code)+'">'+wxIcon(code)+'</span>'+
+      '<div class="hi tnum">'+Math.round(daily.temperature_2m_max[i])+'°</div>'+
+      '<div class="lo tnum">'+Math.round(daily.temperature_2m_min[i])+'°</div></div>';
+  }
+  return '<div class="fc">'+days+'</div>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'large';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{}, params=(bw&&bw.params)||{};
+  var place=params.place||'—';
+  var el=document.getElementById('root');
+  el.className=(bw&&bw.stale?'stale':'');
+
+  var wx=d.wx, cur=wx&&wx.current;
+  if(!cur || cur.temperature_2m===undefined){
+    el.innerHTML='<div class="wrap"><div class="muted">Météo indisponible</div></div>';
+    return;
+  }
+
+  var code=(typeof cur.weather_code==='number')?cur.weather_code:3;
+  var now='<div class="now"><span class="wico" style="color:'+wxColor(code)+'">'+wxIcon(code)+'</span>'+
+    '<div class="meta"><div class="temp tnum">'+Math.round(cur.temperature_2m)+'°</div>'+
+    '<div class="cond">'+esc(wmoLabel(code))+'</div></div></div>';
+
+  var hd='<div class="hd"><span class="place">'+esc(place)+'</span></div>';
+  var fc=(fam==='small')?'':forecastRow(wx.daily);
+
+  el.innerHTML='<div class="wrap">'+hd+now+fc+'</div>';
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
+</script></body></html>
