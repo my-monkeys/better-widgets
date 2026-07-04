@@ -1,0 +1,6 @@
+{
+  "id": "system", "name": "Système", "version": "1.0.0",
+  "sizes": ["small", "medium"], "refresh": 60,
+  "params": [],
+  "sources": [ { "key": "sys", "type": "system" } ]
+}

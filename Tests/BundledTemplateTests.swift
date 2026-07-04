@@ -81,4 +81,19 @@ final class BundledTemplateTests: XCTestCase {
         ]
         try await assertRenders("crypto", data: data)
     }
+
+    func testSystemManifestValid() throws {
+        let m = try BundledTemplates.manifest("system")
+        XCTAssertEqual(m.sources.first?.type, "system")
+        XCTAssertTrue(m.params.isEmpty)
+    }
+
+    @MainActor
+    func testSystemRenders() async throws {
+        let data: [String: Any] = ["sys": [
+            "datetime": "2026-07-05T14:30:00", "uptime": 275400.0,
+            "memTotal": 17_179_869_184.0, "memFree": 5_368_709_120.0, "diskFree": 210_000_000_000.0
+        ]]
+        try await assertRenders("system", data: data)
+    }
 }
