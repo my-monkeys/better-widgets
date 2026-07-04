@@ -2,6 +2,7 @@ import Foundation
 
 enum TemplateStoreError: Error {
     case notFound(String)
+    case readOnly(String)
 }
 
 final class TemplateStore {
@@ -97,12 +98,10 @@ final class TemplateStore {
         let id = uniqueID(base: name)
         let dir = templateDirectory(id: id)
         try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
-        let manifest = """
-        {
-          "id": "\(id)", "name": "\(name)", "version": "1.0.0",
-          "sizes": ["small"], "refresh": 900, "params": [], "sources": []
-        }
-        """
+        let manifestObj: [String: Any] = [
+            "id": id, "name": name, "version": "1.0.0",
+            "sizes": ["small"], "refresh": 900, "params": [], "sources": []
+        ]
         let html = """
         <!doctype html><html><head><meta charset="utf-8"><style>
           html,body{margin:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;
@@ -110,7 +109,9 @@ final class TemplateStore {
           @media (prefers-color-scheme:dark){body{background:#16130e;color:#f0ece4}}
         </style></head><body><div>Hello</div></body></html>
         """
-        try? manifest.write(to: dir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
+        if let manifestData = try? JSONSerialization.data(withJSONObject: manifestObj, options: [.prettyPrinted]) {
+            try? manifestData.write(to: dir.appendingPathComponent("manifest.json"), options: .atomic)
+        }
         try? html.write(to: dir.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
         try? Data().write(to: dir.appendingPathComponent(userMarkerName))
         return id
@@ -137,11 +138,15 @@ final class TemplateStore {
         return id
     }
 
-    /// Validates `manifestJSON` first; writes nothing if invalid.
+    /// Validates `manifestJSON` first; writes nothing if invalid. Refuses to overwrite a bundled
+    /// (non-`.user`) template; a save to a never-created id marks the new dir as user-owned.
     func saveTemplate(id: String, html: String, manifestJSON: String) throws {
         _ = try TemplateManifest.validated(from: Data(manifestJSON.utf8))
         let dir = templateDirectory(id: id)
+        let exists = FileManager.default.fileExists(atPath: dir.path)
+        guard isUserTemplate(id: id) || !exists else { throw TemplateStoreError.readOnly(id) }
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        if !isUserTemplate(id: id) { try? Data().write(to: dir.appendingPathComponent(userMarkerName)) }
         try manifestJSON.write(to: dir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
         try html.write(to: dir.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
     }

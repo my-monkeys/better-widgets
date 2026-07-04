@@ -53,6 +53,27 @@ final class TemplateStoreWriteTests: XCTestCase {
         XCTAssertEqual(try store.manifest(id: id).refresh, 600)
     }
 
+    func testCreateUserTemplateWithQuotesInNameProducesValidManifest() throws {
+        let id = store.createUserTemplate(name: #"Weird "Name" \back"#)
+        XCTAssertNoThrow(try store.manifest(id: id))
+        XCTAssertTrue(store.list().map(\.id).contains(id))
+    }
+
+    func testSaveTemplateRefusesBundledId() throws {
+        let bundledDir = root.appendingPathComponent("bundled")
+        try FileManager.default.createDirectory(at: bundledDir, withIntermediateDirectories: true)
+        let bundledManifest = #"{"id":"bundled","name":"B","version":"1.0.0","sizes":["small"],"refresh":900,"params":[],"sources":[]}"#
+        try bundledManifest.write(to: bundledDir.appendingPathComponent("manifest.json"), atomically: true, encoding: .utf8)
+        try "<p>bundled</p>".write(to: bundledDir.appendingPathComponent("index.html"), atomically: true, encoding: .utf8)
+
+        XCTAssertThrowsError(try store.saveTemplate(id: "bundled", html: "<p>hacked</p>",
+            manifestJSON: #"{"id":"bundled","name":"B2","version":"1.0.0","sizes":["medium"],"refresh":600,"params":[],"sources":[]}"#))
+
+        XCTAssertEqual(try store.html(id: "bundled"), "<p>bundled</p>")
+        XCTAssertEqual(try store.manifest(id: "bundled").refresh, 900)
+        XCTAssertFalse(store.isUserTemplate(id: "bundled"))
+    }
+
     func testDeleteUserTemplateRemovesUserButNotBundled() throws {
         let user = store.createUserTemplate(name: "U")
         store.deleteUserTemplate(id: user)
