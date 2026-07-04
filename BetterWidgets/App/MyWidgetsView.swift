@@ -7,6 +7,7 @@ struct MyWidgetsView: View {
     var onBrowseGallery: () -> Void = {}
     @State private var pendingDelete: WidgetInstance?
     @State private var guideShown = false
+    @State private var editing: WidgetInstance?
 
     // Must be >= the widest card's frame width (medium/large cards are 340pt wide + Space.lg
     // padding on each side), or a card clips/overflows its adaptive column in a narrow window.
@@ -31,6 +32,7 @@ struct MyWidgetsView: View {
                                     model: WidgetCardModel(instance: instance,
                                                            status: state.status(for: instance.id),
                                                            rendersDir: state.shared.renderURL),
+                                    onEdit: { editing = instance },
                                     onDuplicate: { _ = state.duplicateInstance(instance.id) },
                                     onDelete: { pendingDelete = instance },
                                     onAddToDesktop: { guideShown = true })
@@ -50,6 +52,9 @@ struct MyWidgetsView: View {
             Button("Annuler", role: .cancel) { pendingDelete = nil }
         }
         .sheet(isPresented: $guideShown) { AddToDesktopGuide { guideShown = false } }
+        .sheet(item: $editing) { instance in
+            WidgetEditorView(state: state, instance: instance) { editing = nil }
+        }
     }
 
     /// `confirmationDialog` needs a writable binding: a dismissal from outside the two
