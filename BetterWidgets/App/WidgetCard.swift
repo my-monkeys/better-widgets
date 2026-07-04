@@ -22,6 +22,7 @@ struct WidgetCardModel {
 struct WidgetCard: View {
     @Environment(\.colorScheme) private var colorScheme
     let model: WidgetCardModel
+    let onEdit: () -> Void
     let onDuplicate: () -> Void
     let onDelete: () -> Void
     let onAddToDesktop: () -> Void
@@ -69,7 +70,7 @@ struct WidgetCard: View {
 
     private var actions: some View {
         Menu {
-            Button("Éditer") {}.disabled(true)  // 3b
+            Button("Éditer", action: onEdit)
             Button("Dupliquer", action: onDuplicate)
             Button("Ajouter au bureau…", action: onAddToDesktop)
             Divider()

@@ -24,15 +24,18 @@ final class RenderPipeline {
     private let shared: SharedStore
     private let permissions: PermissionStore
     private let registry: DataProviderRegistry
+    private let secrets: any SecretResolving
     private let engine: any Rendering
     private let reloader: any WidgetReloading
 
     init(templates: TemplateStore, shared: SharedStore, permissions: PermissionStore,
-         registry: DataProviderRegistry, engine: any Rendering, reloader: any WidgetReloading) {
+         registry: DataProviderRegistry, secrets: any SecretResolving = NoopSecretResolver(),
+         engine: any Rendering, reloader: any WidgetReloading) {
         self.templates = templates
         self.shared = shared
         self.permissions = permissions
         self.registry = registry
+        self.secrets = secrets
         self.engine = engine
         self.reloader = reloader
     }
@@ -56,7 +59,12 @@ final class RenderPipeline {
             let allowed = manifest.sources.filter { !$0.requiresConsent || granted.contains($0.type) }
             let denied = manifest.sources.filter { $0.requiresConsent && !granted.contains($0.type) }
 
-            let fetch = await registry.fetchAll(sources: allowed, paramValues: params)
+            // Resolve per-instance API secrets (secret.<H> → header.<H>) before fetching.
+            let resolvedAllowed = allowed.map {
+                SourceSpec(key: $0.key, type: $0.type,
+                           config: secrets.resolvedConfig(for: $0, instanceId: instance.id))
+            }
+            let fetch = await registry.fetchAll(sources: resolvedAllowed, paramValues: params)
             var data = fetch.data
             for source in denied { data[source.key] = ["__denied": true] }
 

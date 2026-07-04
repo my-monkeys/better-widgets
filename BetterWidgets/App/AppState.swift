@@ -11,12 +11,17 @@ final class AppState: ObservableObject {
 
     let shared: SharedStore
     let templates: TemplateStore
+    let secrets: SecretResolver
+    let permissions: PermissionStore
     private let scheduler: any InstanceScheduling
 
     /// Designated init — injectable for tests.
-    init(shared: SharedStore, templates: TemplateStore, scheduler: any InstanceScheduling) {
+    init(shared: SharedStore, templates: TemplateStore, secrets: SecretResolver,
+         permissions: PermissionStore, scheduler: any InstanceScheduling) {
         self.shared = shared
         self.templates = templates
+        self.secrets = secrets
+        self.permissions = permissions
         self.scheduler = scheduler
     }
 
@@ -25,10 +30,11 @@ final class AppState: ObservableObject {
         let shared = SharedStore.appGroup()
         let templates = TemplateStore.applicationSupport()
         let permissions = PermissionStore.appGroup()
+        let secrets = SecretResolver(backing: KeychainStore())
         let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
-                                      registry: .standard(), engine: RenderEngine(),
+                                      registry: .standard(), secrets: secrets, engine: RenderEngine(),
                                       reloader: WidgetCenterReloader())
-        self.init(shared: shared, templates: templates,
+        self.init(shared: shared, templates: templates, secrets: secrets, permissions: permissions,
                   scheduler: Scheduler(refresher: pipeline, templates: templates))
     }
 
@@ -71,6 +77,10 @@ final class AppState: ObservableObject {
     }
 
     func deleteInstance(_ id: UUID) {
+        if let instance = instances.first(where: { $0.id == id }),
+           let manifest = try? templates.manifest(id: instance.templateId) {
+            secrets.deleteAll(instanceId: id, sources: manifest.sources)
+        }
         instances.removeAll { $0.id == id }
         shared.removeInstance(id: id)
         persistAndReschedule()
@@ -85,6 +95,12 @@ final class AppState: ObservableObject {
         instances.append(copy)
         persistAndReschedule()
         return copy
+    }
+
+    func updateInstance(_ updated: WidgetInstance) {
+        guard let index = instances.firstIndex(where: { $0.id == updated.id }) else { return }
+        instances[index] = updated
+        persistAndReschedule()
     }
 
     func status(for id: UUID) -> InstanceStatus {

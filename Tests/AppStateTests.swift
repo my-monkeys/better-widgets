@@ -13,6 +13,13 @@ final class AppStateTests: XCTestCase {
         func refreshAllNow(instances: [WidgetInstance]) { refreshed.append(instances) }
     }
 
+    final class MemSecretStore: SecretBackingStore {
+        private var s: [String: String] = [:]
+        func setSecret(_ value: String, forKey key: String) { s[key] = value }
+        func secret(forKey key: String) -> String? { s[key] }
+        func deleteSecret(forKey key: String) { s[key] = nil }
+    }
+
     override func setUpWithError() throws {
         tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         shared = try SharedStore(baseURL: tmp.appendingPathComponent("shared"))
@@ -23,6 +30,14 @@ final class AppStateTests: XCTestCase {
             .write(to: tplRoot.appendingPathComponent("hello-clock/manifest.json"), atomically: true, encoding: .utf8)
         try "<html></html>".write(to: tplRoot.appendingPathComponent("hello-clock/index.html"),
                                   atomically: true, encoding: .utf8)
+
+        try FileManager.default.createDirectory(at: tplRoot.appendingPathComponent("api"),
+                                                withIntermediateDirectories: true)
+        try #"{ "id": "api", "name": "API", "version": "1.0.0", "sizes": ["small","medium"], "refresh": 60, "params": [], "sources": [{"key":"api","type":"json","config":{"url":"https://x","secret.Authorization":""}}] }"#
+            .write(to: tplRoot.appendingPathComponent("api/manifest.json"), atomically: true, encoding: .utf8)
+        try "<html></html>".write(to: tplRoot.appendingPathComponent("api/index.html"),
+                                  atomically: true, encoding: .utf8)
+
         templates = TemplateStore(rootURL: tplRoot)
     }
 
@@ -30,7 +45,11 @@ final class AppStateTests: XCTestCase {
 
     private func makeState() -> (AppState, SpyScheduler) {
         let spy = SpyScheduler()
-        return (AppState(shared: shared, templates: templates, scheduler: spy), spy)
+        let permissions = try! PermissionStore(baseURL: tmp.appendingPathComponent("permissions"))
+        let state = AppState(shared: shared, templates: templates,
+                             secrets: SecretResolver(backing: MemSecretStore()),
+                             permissions: permissions, scheduler: spy)
+        return (state, spy)
     }
 
     func testCreateInstanceUsesTemplateNameAndPersists() {
@@ -54,6 +73,14 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(spy.restarted.last, [])
     }
 
+    func testDeleteInstancePurgesSecrets() {
+        let (state, _) = makeState()
+        let a = state.createInstance(templateId: "api", size: .small)
+        state.secrets.set("tok", instanceId: a.id, sourceKey: "api", header: "Authorization")
+        state.deleteInstance(a.id)
+        XCTAssertNil(state.secrets.get(instanceId: a.id, sourceKey: "api", header: "Authorization"))
+    }
+
     func testDuplicateInstance() {
         let (state, _) = makeState()
         let a = state.createInstance(templateId: "hello-clock", size: .small)
@@ -63,6 +90,26 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(dup!.name, "Horloge (copie)")
         XCTAssertEqual(dup!.size, a.size)
         XCTAssertEqual(state.instances.count, 2)
+    }
+
+    func testUpdateInstanceReplacesAndPersists() {
+        let (state, spy) = makeState()
+        let a = state.createInstance(templateId: "hello-clock", size: .small)
+        var edited = a
+        edited.paramValues = ["accent": "#000000"]
+        state.updateInstance(edited)
+        XCTAssertEqual(state.instances.first(where: { $0.id == a.id })?.paramValues, ["accent": "#000000"])
+        XCTAssertEqual(shared.loadInstances().first(where: { $0.id == a.id })?.paramValues, ["accent": "#000000"])
+        XCTAssertEqual(spy.restarted.last, state.instances)
+    }
+
+    func testUpdateInstanceUnknownIdIsNoOp() {
+        let (state, _) = makeState()
+        _ = state.createInstance(templateId: "hello-clock", size: .small)
+        let before = state.instances
+        state.updateInstance(WidgetInstance(id: UUID(), name: "x", templateId: "hello-clock",
+                                            size: .small, paramValues: [:]))
+        XCTAssertEqual(state.instances, before)
     }
 
     func testStatusMapping() throws {

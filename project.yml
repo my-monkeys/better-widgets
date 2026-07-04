@@ -78,6 +78,8 @@ targets:
         optional: true
       - path: BetterWidgets/App/WidgetCard.swift
         optional: true
+      - path: BetterWidgets/App/WidgetEditorModel.swift
+        optional: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgetsTests
