@@ -27,6 +27,14 @@ enum DesignTokens {
     static let statusStale = adaptive(light: hex(0xF08C00), dark: hex(0xFFA94D))
     static let statusError = adaptive(light: hex(0xE03131), dark: hex(0xFF6B6B))
 
+    static func statusColor(_ status: InstanceStatus) -> Color {
+        switch status {
+        case .ok: return statusOK
+        case .stale: return statusStale
+        case .error: return statusError
+        }
+    }
+
     enum Space {
         static let xs: CGFloat = 4, sm: CGFloat = 8, md: CGFloat = 12, lg: CGFloat = 16
         static let xl: CGFloat = 24, xxl: CGFloat = 40, section: CGFloat = 80
