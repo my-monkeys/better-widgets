@@ -60,6 +60,10 @@ body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 [data-size="medium"] .item .title{font-size:12.5px;line-height:1.24}
 .item .when{font-size:11px;color:var(--text-3);font-weight:500}
+/* medium (364×170pt) has no vertical room for 3 items × 2-line title + date line without
+   clipping the 3rd item inside .list's overflow:hidden — date is secondary here, drop it in
+   medium only; large (364×382pt) keeps it. */
+[data-size="medium"] .item .when{display:none}
 
 .muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
   color:var(--text-3);font-size:12px;text-align:center}
