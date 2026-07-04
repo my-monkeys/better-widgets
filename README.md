@@ -119,6 +119,22 @@ Depuis l'app, on peut aussi éditer les templates dans un **éditeur de code emb
 avancé), régler les paramètres avec **aperçu en direct**, et exporter/importer un template
 comme fichier **`.bwidget`** (un conteneur JSON auto-décrit).
 
+## Créer un widget avec une IA
+
+Pas envie d'écrire le HTML à la main ? Le dépôt fournit un **skill portable** —
+[`skills/create-widget.md`](skills/create-widget.md) — qui apprend à un assistant (Claude, Gemini,
+Codex, ChatGPT…) tout le contrat Better Widgets : schéma du manifest, objet `window.BW`, tailles,
+sources, et les contraintes du bac à sable (tout en inline, pas de CDN, SVG pour icônes et
+graphiques, thème clair/sombre…).
+
+1. Ouvre [`skills/create-widget.md`](skills/create-widget.md) et **colle son contenu** dans ton
+   assistant IA (ou dépose-le dans `.claude/skills/create-better-widget/SKILL.md` pour Claude Code).
+2. Demande *« crée-moi un widget qui affiche &lt;ton idée&gt; »*.
+3. L'assistant renvoie un `manifest.json` + un `index.html` (et peut l'empaqueter en `.bwidget`)
+   → tu **importes** le résultat dans l'app.
+
+Les six exemples de ce README ont été dessinés exactement selon ce contrat.
+
 ## Sources de données
 
 | Type       | Ce qu'elle fournit |
@@ -145,12 +161,19 @@ tant que l'accès n'est pas accordé, le template reçoit un marqueur au lieu de
 
 ## Installer & lancer
 
-> macOS 14+ · Apple Silicon. L'app est signée avec l'identité de développement My-Monkey.
+> macOS 14+ · Apple Silicon.
 
-**Build de test prêt à l'emploi** : décompressez `BetterWidgets.app.zip`, glissez `BetterWidgets.app`
-dans `/Applications`, lancez-la (au premier lancement : clic droit → *Ouvrir* si Gatekeeper râle).
-L'icône apparaît dans la barre de menus. Ajoutez ensuite un widget « Better Widgets » depuis la
-galerie de widgets macOS (clic droit sur le bureau → *Modifier les widgets*).
+**Homebrew** *(cible, arrive avec la première release publique)* :
+
+```bash
+brew install --cask my-monkeys/tap/better-widgets
+```
+
+**Build de test, dès maintenant** : décompressez `BetterWidgets.app.zip` (signé avec l'identité de
+développement My-Monkey), glissez `BetterWidgets.app` dans `/Applications`, lancez-la (au premier
+lancement : clic droit → *Ouvrir* si Gatekeeper râle). L'icône apparaît dans la barre de menus.
+Ajoutez ensuite un widget « Better Widgets » depuis la galerie de widgets macOS (clic droit sur le
+bureau → *Modifier les widgets*).
 
 **Depuis les sources** :
 
