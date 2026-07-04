@@ -102,12 +102,13 @@ xcodegen generate && xcodebuild test -project BetterWidgets.xcodeproj -scheme Be
   -destination 'platform=macOS' -quiet
 ```
 
-106 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
+121 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
 RenderEngine, NavigationPolicy, TemplateAssetSchemeHandler, DataProvider, RSSDataProvider,
 RSSFeedParser, CalendarDataProvider, WeatherDataProvider, PermissionStore, RenderPipeline,
 Scheduler, WidgetSize, Smoke, DesignTokens, AppState, WidgetCardModel), Plan 3b-1 ajoute
 `KeychainStoreTests`, `SecretResolverTests`, `WidgetEditorModelTests` ; Plan 3b-2 ajoute
-`TemplateStoreWriteTests`, `TemplateEditorModelTests`.
+`TemplateStoreWriteTests`, `TemplateEditorModelTests` ; Plan 3c ajoute `BWidgetArchiveTests`,
+`BWidgetImporterTests` (8, la surface d'import), `PermissionConsentModelTests`.
 Doit rester vert avant tout commit. Les vues SwiftUI n'ont pas de tests unitaires (gate = build vert
 + vérif réelle) ; la logique (CRUD, model, scheduler, store, tokens, secrets/resolver, éditeur) est testée.
 Secrets en test : toujours un `SecretBackingStore` mémoire, jamais le vrai Keychain.
@@ -179,9 +180,19 @@ messages de commit.
       `forkTemplate`/`saveTemplate` (garde contre l'écrasement d'un bundlé)/`deleteUserTemplate`/
       `isUserTemplate`. Dette fast-follow : orphelins des templates vides (création eager au tap),
       partition `fetchPreviewData` dupliquée.
-  - **3c — Partage & consentement** : import/export `.bwidget` (⚠️ le confinement symlink-safe de la
-    WebView, fait en Plan 2, est un **prérequis dur** avant l'import), UI de consentement (grants du
-    `PermissionStore`), + météo par localisation courante (`CLLocationManager`).
+  - **3c — Partage & consentement** (`feat/fondations`) : **fait**. **`.bwidget` = conteneur JSON
+    auto-décrit** (`BWidgetArchive`, PAS un zip — une app sandboxée ne peut extraire un zip sans
+    `Process` bloqué ni lib SPM interdite ; le JSON ne peut pas porter d'entrée symlink = plus sûr).
+    **Import** (`BWidgetImporter`, la surface d'attaque) : valide chaque entrée (whitelist
+    manifest/index/assets** + rejet absolu/`..`/doublons) → `TemplateManifest.validated` → installe un
+    template **utilisateur** ; confinement d'écriture (resolvingSymlinksInPath + prefix), **rien
+    installé sur tout rejet** (8 tests). **UI de consentement** par instance (`PermissionConsentModel`/
+    `View`, atteignable via « Permissions… » sur les cartes ; grant `PermissionStore`, le prompt TCC
+    reste l'autorité). **Météo par localisation courante** (`config.useCurrentLocation` + `LocationProvider`
+    mockable ; entitlement `personal-information.location` + usage string). Galerie « Importer… » /
+    « Exporter… » (entitlement `files.user-selected.read-write`). Dette fast-follow : cap taille/entrées
+    à l'import, `ImportError: LocalizedError`, purge des grants orphelins au delete.
+- **Plan 3 — UI COMPLÈTE (3a+3b+3c) : FAIT & MERGÉ.**
 - **Plan 4 — Templates & distribution** : 8-10 templates maison, direction artistique poussée, DMG
   notarized + cask `my-monkeys/tap/better-widgets` (même chaîne qu'OpenSuperWhisper). ⚠️ Provisionner
   **WeatherKit** au portail Apple Developer (capability + clé) pour la météo réelle.
