@@ -65,18 +65,15 @@ struct WidgetEditorView: View {
     private var templateDir: URL { state.templates.templateDirectory(id: model.instance.templateId) }
 
     /// Fetches preview data once (on open, and on demand via "Rafraîchir l'aperçu").
-    /// Writes working-copy secrets to the Keychain *before* save so the preview is
-    /// authenticated even for a not-yet-saved instance — `persistSecrets` at save time
-    /// remains the source of truth (this just keeps the preview in sync with the form).
+    /// Resolves working-copy secrets from an in-memory resolver (`model.previewResolver()`)
+    /// so the preview is authenticated even for a not-yet-saved instance, without ever
+    /// writing to the real Keychain — only "Enregistrer" (`persistSecrets`) does that.
     @MainActor private func fetchPreviewData() async {
         let granted = state.permissions.grantedTypes(instanceId: model.instance.id)
         let allowed = model.manifest.sources.filter { !$0.requiresConsent || granted.contains($0.type) }
-        for (composite, value) in model.secretValues where !value.isEmpty {
-            let parts = composite.split(separator: ".", maxSplits: 1).map(String.init)
-            if parts.count == 2 { state.secrets.set(value, instanceId: model.instance.id, sourceKey: parts[0], header: parts[1]) }
-        }
+        let resolver = model.previewResolver()
         let resolved = allowed.map { SourceSpec(key: $0.key, type: $0.type,
-            config: state.secrets.resolvedConfig(for: $0, instanceId: model.instance.id)) }
+            config: resolver.resolvedConfig(for: $0, instanceId: model.instance.id)) }
         let result = await DataProviderRegistry.standard().fetchAll(sources: resolved, paramValues: model.mergedParams())
         var data = result.data
         for source in model.manifest.sources where source.requiresConsent && !granted.contains(source.type) {
@@ -142,7 +139,7 @@ struct ParamFormView: View {
     }
 
     private func paramBinding(_ key: String) -> Binding<String> {
-        Binding(get: { model.paramValues[key] ?? "" }, set: { model.paramValues[key] = $0 })
+        Binding(get: { model.paramValues[key] ?? defaultFor(key) ?? "" }, set: { model.paramValues[key] = $0 })
     }
 
     private func secretBinding(_ req: (sourceKey: String, header: String)) -> Binding<String> {
@@ -152,8 +149,12 @@ struct ParamFormView: View {
 
     private func colorBinding(_ key: String) -> Binding<Color> {
         Binding(
-            get: { Color(hex: model.paramValues[key] ?? "#000000") },
+            get: { Color(hex: model.paramValues[key] ?? defaultFor(key) ?? "#000000") },
             set: { model.paramValues[key] = $0.toHex() })
+    }
+
+    private func defaultFor(_ key: String) -> String? {
+        model.manifest.params.first { $0.key == key }?.default
     }
 }
 

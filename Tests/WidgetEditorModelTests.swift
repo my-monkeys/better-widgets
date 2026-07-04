@@ -65,4 +65,35 @@ final class WidgetEditorModelTests: XCTestCase {
         model.persistSecrets(instanceId: id)
         XCTAssertEqual(resolver.get(instanceId: id, sourceKey: "api", header: "Authorization"), "Bearer Z")
     }
+
+    func testPersistSecretsDeletesOnEmpty() {
+        let mem = MemSecretStore(); let resolver = SecretResolver(backing: mem)
+        let m = manifest(sources: #"{"key":"api","type":"json","config":{"secret.Authorization":""}}"#)
+        let id = UUID()
+        resolver.set("Bearer Z", instanceId: id, sourceKey: "api", header: "Authorization")
+        let model = WidgetEditorModel(instance: WidgetInstance(id: id, name: "x", templateId: "t",
+                                      size: .small, paramValues: [:]), manifest: m, secrets: resolver)
+        XCTAssertEqual(model.secretValues["api.Authorization"], "Bearer Z")   // seeded from backing
+        model.secretValues["api.Authorization"] = ""
+        model.persistSecrets(instanceId: id)
+        XCTAssertNil(resolver.get(instanceId: id, sourceKey: "api", header: "Authorization"))
+    }
+
+    func testPreviewResolverResolvesWorkingSecretWithoutTouchingRealBacking() {
+        let realBacking = MemSecretStore(); let realResolver = SecretResolver(backing: realBacking)
+        let m = manifest(sources: #"{"key":"api","type":"json","config":{"url":"https://x","secret.Authorization":""}}"#)
+        let id = UUID()
+        let model = WidgetEditorModel(instance: WidgetInstance(id: id, name: "x", templateId: "t",
+                                      size: .small, paramValues: [:]), manifest: m, secrets: realResolver)
+        model.secretValues["api.Authorization"] = "Bearer Z"
+
+        let preview = model.previewResolver()
+        let source = m.sources.first!
+        let resolved = preview.resolvedConfig(for: source, instanceId: id)
+        XCTAssertEqual(resolved?["header.Authorization"], "Bearer Z")
+        XCTAssertNil(resolved?["secret.Authorization"])
+
+        // Real Keychain-backed resolver was never written to by the preview.
+        XCTAssertNil(realResolver.get(instanceId: id, sourceKey: "api", header: "Authorization"))
+    }
 }

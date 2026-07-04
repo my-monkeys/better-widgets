@@ -55,10 +55,27 @@ final class WidgetEditorModel: ObservableObject {
     }
 
     func persistSecrets(instanceId: UUID) {
+        for (composite, value) in secretValues {
+            let parts = composite.split(separator: ".", maxSplits: 1).map(String.init)
+            guard parts.count == 2 else { continue }
+            if value.isEmpty {
+                secrets.delete(instanceId: instanceId, sourceKey: parts[0], header: parts[1])
+            } else {
+                secrets.set(value, instanceId: instanceId, sourceKey: parts[0], header: parts[1])
+            }
+        }
+    }
+
+    /// A resolver holding the working-copy secrets in memory, so the editor preview
+    /// is authenticated without persisting anything to the real Keychain before save.
+    func previewResolver() -> SecretResolver {
+        let backing = InMemorySecretStore()
+        let resolver = SecretResolver(backing: backing)
         for (composite, value) in secretValues where !value.isEmpty {
             let parts = composite.split(separator: ".", maxSplits: 1).map(String.init)
             guard parts.count == 2 else { continue }
-            secrets.set(value, instanceId: instanceId, sourceKey: parts[0], header: parts[1])
+            resolver.set(value, instanceId: instance.id, sourceKey: parts[0], header: parts[1])
         }
+        return resolver
     }
 }

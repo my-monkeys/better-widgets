@@ -47,3 +47,12 @@ struct KeychainStore: SecretBackingStore {
         SecItemDelete(query as CFDictionary)
     }
 }
+
+/// In-memory secret store (used for editor preview so working-copy secrets
+/// are resolved without writing to the real Keychain until the user saves).
+final class InMemorySecretStore: SecretBackingStore {
+    private var store: [String: String] = [:]
+    func setSecret(_ value: String, forKey key: String) { store[key] = value }
+    func secret(forKey key: String) -> String? { store[key] }
+    func deleteSecret(forKey key: String) { store[key] = nil }
+}

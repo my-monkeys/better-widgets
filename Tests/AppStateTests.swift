@@ -30,6 +30,14 @@ final class AppStateTests: XCTestCase {
             .write(to: tplRoot.appendingPathComponent("hello-clock/manifest.json"), atomically: true, encoding: .utf8)
         try "<html></html>".write(to: tplRoot.appendingPathComponent("hello-clock/index.html"),
                                   atomically: true, encoding: .utf8)
+
+        try FileManager.default.createDirectory(at: tplRoot.appendingPathComponent("api"),
+                                                withIntermediateDirectories: true)
+        try #"{ "id": "api", "name": "API", "version": "1.0.0", "sizes": ["small","medium"], "refresh": 60, "params": [], "sources": [{"key":"api","type":"json","config":{"url":"https://x","secret.Authorization":""}}] }"#
+            .write(to: tplRoot.appendingPathComponent("api/manifest.json"), atomically: true, encoding: .utf8)
+        try "<html></html>".write(to: tplRoot.appendingPathComponent("api/index.html"),
+                                  atomically: true, encoding: .utf8)
+
         templates = TemplateStore(rootURL: tplRoot)
     }
 
@@ -63,6 +71,14 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(shared.loadInstances(), [])
         XCTAssertFalse(FileManager.default.fileExists(atPath: shared.renderURL(instanceId: a.id, theme: .light).path))
         XCTAssertEqual(spy.restarted.last, [])
+    }
+
+    func testDeleteInstancePurgesSecrets() {
+        let (state, _) = makeState()
+        let a = state.createInstance(templateId: "api", size: .small)
+        state.secrets.set("tok", instanceId: a.id, sourceKey: "api", header: "Authorization")
+        state.deleteInstance(a.id)
+        XCTAssertNil(state.secrets.get(instanceId: a.id, sourceKey: "api", header: "Authorization"))
     }
 
     func testDuplicateInstance() {
