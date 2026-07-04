@@ -12,7 +12,10 @@ final class CoreLocationProvider: NSObject, LocationProvider, CLLocationManagerD
     private let manager = CLLocationManager()
 
     func currentCoordinates() async throws -> (lat: Double, lon: Double) {
-        try await withCheckedThrowingContinuation { cont in
+        guard continuation == nil else {
+            throw DataProviderError.requestInFlight("location request already in flight")
+        }
+        return try await withCheckedThrowingContinuation { cont in
             self.continuation = cont
             manager.delegate = self
             manager.requestWhenInUseAuthorization()
