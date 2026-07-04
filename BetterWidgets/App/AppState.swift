@@ -95,6 +95,12 @@ final class AppState: ObservableObject {
         return copy
     }
 
+    func updateInstance(_ updated: WidgetInstance) {
+        guard let index = instances.firstIndex(where: { $0.id == updated.id }) else { return }
+        instances[index] = updated
+        persistAndReschedule()
+    }
+
     func status(for id: UUID) -> InstanceStatus {
         let state = shared.loadState(instanceId: id)
         if let error = state.lastError { return .error(error) }

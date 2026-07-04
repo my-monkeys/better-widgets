@@ -74,6 +74,26 @@ final class AppStateTests: XCTestCase {
         XCTAssertEqual(state.instances.count, 2)
     }
 
+    func testUpdateInstanceReplacesAndPersists() {
+        let (state, spy) = makeState()
+        let a = state.createInstance(templateId: "hello-clock", size: .small)
+        var edited = a
+        edited.paramValues = ["accent": "#000000"]
+        state.updateInstance(edited)
+        XCTAssertEqual(state.instances.first(where: { $0.id == a.id })?.paramValues, ["accent": "#000000"])
+        XCTAssertEqual(shared.loadInstances().first(where: { $0.id == a.id })?.paramValues, ["accent": "#000000"])
+        XCTAssertEqual(spy.restarted.last, state.instances)
+    }
+
+    func testUpdateInstanceUnknownIdIsNoOp() {
+        let (state, _) = makeState()
+        _ = state.createInstance(templateId: "hello-clock", size: .small)
+        let before = state.instances
+        state.updateInstance(WidgetInstance(id: UUID(), name: "x", templateId: "hello-clock",
+                                            size: .small, paramValues: [:]))
+        XCTAssertEqual(state.instances, before)
+    }
+
     func testStatusMapping() throws {
         let (state, _) = makeState()
         let a = state.createInstance(templateId: "hello-clock", size: .small)
