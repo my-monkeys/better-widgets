@@ -39,4 +39,18 @@ final class SchedulerTests: XCTestCase {
         scheduler.stop()
         XCTAssertEqual(refresher.safeCount, 2)
     }
+
+    @MainActor
+    func testRestartAfterStopStillRefreshes() async throws {
+        let tmp = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+        let refresher = CountingRefresher()
+        let scheduler = Scheduler(refresher: refresher, templates: TemplateStore(rootURL: tmp))
+        scheduler.stop()                          // finish the initial stream/worker
+        let a = WidgetInstance(id: UUID(), name: "a", templateId: "g", size: .small, paramValues: [:])
+        scheduler.restart(instances: [a])         // must recreate the worker and refresh
+        try await Task.sleep(for: .milliseconds(300))
+        scheduler.stop()
+        XCTAssertGreaterThanOrEqual(refresher.safeCount, 1, "restart must recreate the queue so enqueues run")
+    }
 }

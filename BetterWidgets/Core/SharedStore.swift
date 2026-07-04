@@ -61,4 +61,18 @@ final class SharedStore {
         let url = stateURL.appendingPathComponent("\(instanceId.uuidString).json")
         try JSONEncoder().encode(state).write(to: url, options: .atomic)
     }
+
+    // MARK: Removal
+
+    /// Deletes the two render PNGs and the state file for an instance. No-op if absent.
+    func removeInstance(id: UUID) {
+        let urls = [
+            renderURL(instanceId: id, theme: .light),
+            renderURL(instanceId: id, theme: .dark),
+            stateURL.appendingPathComponent("\(id.uuidString).json"),
+        ]
+        for url in urls {
+            try? FileManager.default.removeItem(at: url)
+        }
+    }
 }
