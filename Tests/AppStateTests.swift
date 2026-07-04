@@ -37,8 +37,10 @@ final class AppStateTests: XCTestCase {
 
     private func makeState() -> (AppState, SpyScheduler) {
         let spy = SpyScheduler()
+        let permissions = try! PermissionStore(baseURL: tmp.appendingPathComponent("permissions"))
         let state = AppState(shared: shared, templates: templates,
-                             secrets: SecretResolver(backing: MemSecretStore()), scheduler: spy)
+                             secrets: SecretResolver(backing: MemSecretStore()),
+                             permissions: permissions, scheduler: spy)
         return (state, spy)
     }
 

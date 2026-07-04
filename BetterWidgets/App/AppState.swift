@@ -12,14 +12,16 @@ final class AppState: ObservableObject {
     let shared: SharedStore
     let templates: TemplateStore
     let secrets: SecretResolver
+    let permissions: PermissionStore
     private let scheduler: any InstanceScheduling
 
     /// Designated init — injectable for tests.
     init(shared: SharedStore, templates: TemplateStore, secrets: SecretResolver,
-         scheduler: any InstanceScheduling) {
+         permissions: PermissionStore, scheduler: any InstanceScheduling) {
         self.shared = shared
         self.templates = templates
         self.secrets = secrets
+        self.permissions = permissions
         self.scheduler = scheduler
     }
 
@@ -32,7 +34,7 @@ final class AppState: ObservableObject {
         let pipeline = RenderPipeline(templates: templates, shared: shared, permissions: permissions,
                                       registry: .standard(), secrets: secrets, engine: RenderEngine(),
                                       reloader: WidgetCenterReloader())
-        self.init(shared: shared, templates: templates, secrets: secrets,
+        self.init(shared: shared, templates: templates, secrets: secrets, permissions: permissions,
                   scheduler: Scheduler(refresher: pipeline, templates: templates))
     }
 

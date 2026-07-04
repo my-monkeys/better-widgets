@@ -1,14 +1,16 @@
 import SwiftUI
 
 /// Param editor sheet for a widget instance: a form on the left (generated from the
-/// template's manifest) and a preview placeholder on the right (replaced by a real
-/// live preview in Task 7). Driven by `WidgetEditorModel`'s isolated working copy so
-/// edits only commit to `AppState` on "Enregistrer".
+/// template's manifest) and a live `LivePreviewView` on the right, with size/theme
+/// toggles. Driven by `WidgetEditorModel`'s isolated working copy so edits only commit
+/// to `AppState` on "Enregistrer".
 struct WidgetEditorView: View {
     @StateObject private var model: WidgetEditorModel
     private let state: AppState
     private let onClose: () -> Void
     @State private var confirmCancel = false
+    @State private var previewData: [String: Any] = [:]
+    @State private var previewStale = false
 
     init(state: AppState, instance: WidgetInstance, onClose: @escaping () -> Void) {
         self.state = state
@@ -25,7 +27,7 @@ struct WidgetEditorView: View {
             HStack(alignment: .top, spacing: DesignTokens.Space.xl) {
                 ParamFormView(model: model)
                     .frame(width: 320)
-                previewPlaceholder
+                previewPanel
             }
             .padding(DesignTokens.Space.xl)
             Divider()
@@ -39,13 +41,49 @@ struct WidgetEditorView: View {
         }
     }
 
-    private var previewPlaceholder: some View {
-        // Replaced by LivePreviewView in Task 7.
-        RoundedRectangle(cornerRadius: DesignTokens.Radius.preview)
-            .fill(DesignTokens.surface)
-            .overlay(Text("Aperçu (bientôt)").foregroundStyle(DesignTokens.textSecondary))
-            .frame(maxWidth: .infinity, minHeight: 360)
-            .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.preview).stroke(DesignTokens.separator, lineWidth: 1))
+    private var previewPanel: some View {
+        VStack(spacing: DesignTokens.Space.md) {
+            HStack(spacing: DesignTokens.Space.md) {
+                Picker("", selection: $model.previewSize) {
+                    ForEach(model.manifest.sizes, id: \.self) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.segmented).fixedSize()
+                Toggle("Sombre", isOn: Binding(get: { model.previewTheme == .dark },
+                                               set: { model.previewTheme = $0 ? .dark : .light }))
+                Spacer()
+                Button("Rafraîchir l'aperçu") { Task { await fetchPreviewData() } }
+            }
+            LivePreviewView(html: html, templateDir: templateDir,
+                            context: model.previewContext(data: previewData, stale: previewStale))
+                .frame(width: model.previewSize.pointSize.width, height: model.previewSize.pointSize.height)
+                .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.preview).stroke(DesignTokens.separator, lineWidth: 1))
+        }
+        .frame(maxWidth: .infinity, alignment: .top)
+        .task { await fetchPreviewData() }
+    }
+
+    private var html: String { (try? state.templates.html(id: model.instance.templateId)) ?? "<html></html>" }
+    private var templateDir: URL { state.templates.templateDirectory(id: model.instance.templateId) }
+
+    /// Fetches preview data once (on open, and on demand via "Rafraîchir l'aperçu").
+    /// Writes working-copy secrets to the Keychain *before* save so the preview is
+    /// authenticated even for a not-yet-saved instance — `persistSecrets` at save time
+    /// remains the source of truth (this just keeps the preview in sync with the form).
+    @MainActor private func fetchPreviewData() async {
+        let granted = state.permissions.grantedTypes(instanceId: model.instance.id)
+        let allowed = model.manifest.sources.filter { !$0.requiresConsent || granted.contains($0.type) }
+        for (composite, value) in model.secretValues where !value.isEmpty {
+            let parts = composite.split(separator: ".", maxSplits: 1).map(String.init)
+            if parts.count == 2 { state.secrets.set(value, instanceId: model.instance.id, sourceKey: parts[0], header: parts[1]) }
+        }
+        let resolved = allowed.map { SourceSpec(key: $0.key, type: $0.type,
+            config: state.secrets.resolvedConfig(for: $0, instanceId: model.instance.id)) }
+        let result = await DataProviderRegistry.standard().fetchAll(sources: resolved, paramValues: model.mergedParams())
+        var data = result.data
+        for source in model.manifest.sources where source.requiresConsent && !granted.contains(source.type) {
+            data[source.key] = ["__denied": true]
+        }
+        previewData = data
+        previewStale = !result.failedKeys.isEmpty
     }
 
     private var toolbar: some View {
