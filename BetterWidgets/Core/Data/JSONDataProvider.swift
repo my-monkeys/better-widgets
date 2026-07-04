@@ -10,7 +10,10 @@ struct JSONDataProvider: DataProvider {
             throw DataProviderError.missingConfig("json source '\(spec.key)' requires config.url")
         }
         let urlString = substituteParams(rawURL, params: paramValues)
-        guard let url = URL(string: urlString), url.scheme == "https" else {
+        // HTTPS is always allowed; plaintext HTTP only to private/local networks
+        // (home servers, LAN, Tailscale) — never cleartext to a public host.
+        guard let url = URL(string: urlString), let scheme = url.scheme?.lowercased(),
+              scheme == "https" || (scheme == "http" && PrivateHost.isPrivate(url.host)) else {
             throw DataProviderError.badURL(urlString)
         }
         var request = URLRequest(url: url)
