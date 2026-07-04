@@ -36,6 +36,7 @@ targets:
           - 5C67TFSJ2B.betterwidgets
         com.apple.security.personal-information.calendars: true
         com.apple.security.personal-information.location: true
+        com.apple.security.files.user-selected.read-write: true
     info:
       path: BetterWidgets/Info.plist
       properties:
