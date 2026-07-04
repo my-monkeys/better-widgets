@@ -96,4 +96,21 @@ final class BundledTemplateTests: XCTestCase {
         ]]
         try await assertRenders("system", data: data)
     }
+
+    func testNewsManifestValid() throws {
+        let m = try BundledTemplates.manifest("news")
+        XCTAssertEqual(m.sources.first?.type, "rss")
+        XCTAssertEqual(m.sizes, [.medium, .large])
+    }
+
+    @MainActor
+    func testNewsRenders() async throws {
+        // Keys match RSSDataProvider's actual output shape (`published`, not `date`).
+        let data: [String: Any] = ["rss": ["items": [
+            ["title": "Un titre d'actualité assez long pour tester le clamp", "link": "https://x", "published": "2026-07-05T09:00:00Z"],
+            ["title": "Deuxième article", "link": "https://y", "published": "2026-07-05T08:00:00Z"],
+            ["title": "Troisième", "link": "https://z", "published": "2026-07-04T20:00:00Z"]
+        ]]]
+        try await assertRenders("news", data: data)
+    }
 }

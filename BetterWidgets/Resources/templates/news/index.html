@@ -1,0 +1,129 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — news
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:12px 14px}
+
+.hd{flex:0 0 auto;margin-bottom:8px}
+.hd .ttl{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:-.01em;
+  text-transform:uppercase}
+[data-size="medium"] .hd{margin-bottom:6px}
+
+.list{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+[data-size="medium"] .list{gap:5px}
+
+.item{display:flex;gap:8px;align-items:flex-start}
+.item .dot{flex:0 0 auto;width:6px;height:6px;border-radius:50%;background:var(--accent);
+  margin-top:6px}
+.item .body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.item .title{font-size:13.5px;font-weight:600;line-height:1.28;letter-spacing:-.005em;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+[data-size="medium"] .item .title{font-size:12.5px;line-height:1.24}
+.item .when{font-size:11px;color:var(--text-3);font-weight:500}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* ============================================================
+   Template logic — news (RSS)
+   ============================================================ */
+function relTime(iso){
+  if(!iso) return '';
+  var t=Date.parse(iso);
+  if(isNaN(t)) return '';
+  var diffMs=Math.max(0, Date.now()-t);
+  var min=Math.floor(diffMs/60000);
+  if(min<1) return "à l'instant";
+  if(min<60) return "il y a "+min+" min";
+  var h=Math.floor(min/60);
+  if(h<24) return "il y a "+h+" h";
+  var j=Math.floor(h/24);
+  if(j<7) return "il y a "+j+" j";
+  var sem=Math.floor(j/7);
+  return "il y a "+sem+" sem";
+}
+
+function itemRow(it){
+  var when=relTime(it.published);
+  return '<div class="item"><span class="dot"></span><div class="body">'+
+    '<div class="title">'+esc(it.title||'Sans titre')+'</div>'+
+    (when?'<div class="when tnum">'+esc(when)+'</div>':'')+
+    '</div></div>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'large';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{}, params=(bw&&bw.params)||{};
+  var title=params.title||'Actus';
+  var el=document.getElementById('root');
+  el.className=(bw&&bw.stale?'stale':'');
+
+  var hd='<div class="hd"><span class="ttl">'+esc(title)+'</span></div>';
+
+  var items=(d.rss&&Array.isArray(d.rss.items))?d.rss.items:[];
+  if(!items.length){
+    el.innerHTML='<div class="wrap">'+hd+'<div class="muted">Aucun article</div></div>';
+    return;
+  }
+
+  var count=fam==='medium'?3:5;
+  var rows=items.slice(0,count).map(itemRow).join('');
+  el.innerHTML='<div class="wrap">'+hd+'<div class="list">'+rows+'</div></div>';
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
+</script></body></html>
