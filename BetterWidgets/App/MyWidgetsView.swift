@@ -4,6 +4,7 @@ import SwiftUI
 /// add-to-desktop actions surfaced via `WidgetCard`'s per-card menu.
 struct MyWidgetsView: View {
     @ObservedObject var state: AppState
+    var onBrowseGallery: () -> Void = {}
     @State private var pendingDelete: WidgetInstance?
     @State private var guideShown = false
 
@@ -54,6 +55,8 @@ struct MyWidgetsView: View {
                 .foregroundStyle(DesignTokens.textPrimary)
             Text("Crée ton premier widget depuis la Galerie.")
                 .foregroundStyle(DesignTokens.textSecondary)
+            Button("Parcourir la galerie", action: onBrowseGallery)
+                .tint(DesignTokens.accent)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
         .padding(DesignTokens.Space.section)
