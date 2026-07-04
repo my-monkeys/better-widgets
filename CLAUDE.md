@@ -7,6 +7,7 @@ le pitch produit ; ce fichier couvre les conventions et gotchas pour continuer l
 **Spec** : [`docs/superpowers/specs/2026-07-03-better-widgets-design.md`](docs/superpowers/specs/2026-07-03-better-widgets-design.md)
 **Plan 1 (fondations, ce qui est fait)** : [`docs/superpowers/plans/2026-07-03-better-widgets-fondations.md`](docs/superpowers/plans/2026-07-03-better-widgets-fondations.md)
 **Plan 2 (providers & permissions, ce qui est fait)** : [`docs/superpowers/plans/2026-07-03-better-widgets-providers-permissions.md`](docs/superpowers/plans/2026-07-03-better-widgets-providers-permissions.md)
+**Plan 3a (coquille d'app + Mes widgets, ce qui est fait)** : [spec](docs/superpowers/specs/2026-07-04-better-widgets-ui-3a-design.md) · [plan](docs/superpowers/plans/2026-07-04-better-widgets-ui-3a.md)
 
 ## Stack
 
@@ -60,10 +61,23 @@ BetterWidgets/Core/
 ├── PermissionStore.swift  grants par instance (App Group, `grants.json`) pour les sources
 │                  consent-required (`calendar`/`weather`) ; consommé par RenderPipeline pour
 │                  gater le fetch (voir plus bas)
-├── Scheduler.swift    file de refresh sérielle par instance (1 AsyncStream + 1 worker Task)
-├── SharedStore.swift  contrat App Group : instances.json, renders/<uuid>-<theme>.png, state/<uuid>.json
+├── DesignTokens.swift  langage visuel partagé (éditorial minimal) : couleurs adaptatives
+│                  clair/sombre, Space, FontSize, Radius, statusColor — source unique de l'UI
+├── Scheduler.swift    file de refresh sérielle par instance (1 AsyncStream + 1 worker Task) ;
+│                  `restart(instances:)` recrée le stream/worker (après un `stop()`) + `InstanceScheduling`
+├── SharedStore.swift  contrat App Group : instances.json, renders/<uuid>-<theme>.png, state/<uuid>.json ;
+│                  `removeInstance(id:)` nettoie PNG+state
 └── TemplateStore.swift   templates sur disque (Application Support) + bootstrap des templates bundlés
 ```
+
+Côté **app UI** (Plan 3a, dans `BetterWidgets/App/`, target app uniquement) : `AppState` (source de
+vérité `@MainActor`, **injectable** : init désigné + convenience ; CRUD create/delete/duplicate +
+`status(for:)` → `InstanceStatus{ok,pending,stale,error}`), `MainWindowView` (`Window(id:"main")`
+singleton + `NavigationSplitView` Mes widgets/Galerie), `MyWidgetsView` (grille de cartes, refresh
+via `TimelineView(.periodic)`), `WidgetCard` (+ `WidgetCardModel` testable), `GalleryView`,
+`AddToDesktopGuide`. Les fichiers de logique testés (`AppState.swift`, `WidgetCard.swift`) sont
+ajoutés individuellement aux sources de `BetterWidgetsTests` dans `project.yml` (jamais le dossier
+`App/` entier — sinon le `@main` entre dans le bundle de test).
 
 `SharedStore.swift` et `Core/Models/**` sont compilés dans **les deux** targets (app + extension)
 via `project.yml` — pas de framework partagé, YAGNI tant qu'il n'y a que ces deux consommateurs.
@@ -77,11 +91,13 @@ xcodegen generate && xcodebuild test -project BetterWidgets.xcodeproj -scheme Be
   -destination 'platform=macOS' -quiet
 ```
 
-60 tests (`ManifestTests`, `Plan2ManifestTests`, `SharedStoreTests`, `TemplateStoreTests`,
+75 tests (`ManifestTests`, `Plan2ManifestTests`, `SharedStoreTests`, `TemplateStoreTests`,
 `RenderEngineTests`, `NavigationPolicyTests`, `TemplateAssetSchemeHandlerTests`,
 `DataProviderTests`, `RSSDataProviderTests`, `RSSFeedParserTests`, `CalendarDataProviderTests`,
 `WeatherDataProviderTests`, `PermissionStoreTests`, `RenderPipelineTests`, `SchedulerTests`,
-`WidgetSizeTests`, `SmokeTests`). Doit rester vert avant tout commit.
+`WidgetSizeTests`, `SmokeTests`, `DesignTokensTests`, `AppStateTests`, `WidgetCardModelTests`).
+Doit rester vert avant tout commit. Les vues SwiftUI n'ont pas de tests unitaires (gate = build vert
++ vérif réelle) ; la logique (CRUD, model, scheduler, store, tokens) est testée.
 
 Smoke E2E (build + lance l'app + vérifie les PNG dans l'App Group) : `./scripts/smoke.sh` — voir
 [`README.md`](README.md) pour le détail de ce qu'il fait et pourquoi il tue le process par son nom
@@ -118,7 +134,22 @@ messages de commit.
   Reportés au Plan 3 (assumé dès l'écriture du plan) : secrets `json` dans le Keychain (se
   saisissent dans l'éditeur d'instance, pas encore construit) et la météo par localisation
   courante (`CLLocationManager`) — Plan 2 ne fait que `city`/`lat`+`lon`.
-- **Plan 3 — UI complète** : galerie de templates, éditeur (formulaire de params + preview live +
-  mode avancé CodeMirror), écran « Mes widgets », import/export `.bwidget`.
-- **Plan 4 — Templates & distribution** : 8-10 templates maison, direction artistique, DMG
-  notarized + cask `my-monkeys/tap/better-widgets` (même chaîne qu'OpenSuperWhisper).
+- **Plan 3 — UI complète** : découpé en 3 sous-plans. **DA actée : éditorial minimal** (`DesignTokens`).
+  - **3a — Coquille + Mes widgets** (`feat/fondations`) : **fait**. `Window(id:"main")` singleton
+    summonnée depuis le menu bar (« Ouvrir »), `NavigationSplitView` (Mes widgets / Galerie), grille
+    de cartes (PNG rendu + pastille statut ok/pending/stale/error + dupliquer/supprimer/ajouter-au-
+    bureau ; Éditer désactivé « bientôt »), Galerie minimale (créer avec params par défaut),
+    `AppState` injectable + CRUD, `Scheduler.restart`, `SharedStore.removeInstance`, refresh grille
+    via `TimelineView(.periodic)`. Dette reportée : DRY restart/state-path ; `WidgetCard.image` non
+    mémoïsé ; `enum Section` shadow `SwiftUI.Section` ; race orphelin-PNG sur delete-pendant-rendu
+    (guard `writeRender`) ; auto-open once-at-launch (revisitable avec macOS 15 `.defaultLaunchBehavior(.suppressed)`).
+    **Vérif visuelle bureau à faire par Maxim** (l'écran de la machine de test était verrouillé).
+  - **3b — Éditeur** : formulaire de params généré du manifest + **preview live** (vraie webview) +
+    mode avancé code (CodeMirror). Branche le bouton « Éditer » des cartes. Inclura les secrets `json`
+    dans le Keychain (saisis au niveau de l'instance).
+  - **3c — Partage & consentement** : import/export `.bwidget` (⚠️ le confinement symlink-safe de la
+    WebView, fait en Plan 2, est un **prérequis dur** avant l'import), UI de consentement (grants du
+    `PermissionStore`), + météo par localisation courante (`CLLocationManager`).
+- **Plan 4 — Templates & distribution** : 8-10 templates maison, direction artistique poussée, DMG
+  notarized + cask `my-monkeys/tap/better-widgets` (même chaîne qu'OpenSuperWhisper). ⚠️ Provisionner
+  **WeatherKit** au portail Apple Developer (capability + clé) pour la météo réelle.
