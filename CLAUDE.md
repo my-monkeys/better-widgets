@@ -8,6 +8,7 @@ le pitch produit ; ce fichier couvre les conventions et gotchas pour continuer l
 **Plan 1 (fondations, ce qui est fait)** : [`docs/superpowers/plans/2026-07-03-better-widgets-fondations.md`](docs/superpowers/plans/2026-07-03-better-widgets-fondations.md)
 **Plan 2 (providers & permissions, ce qui est fait)** : [`docs/superpowers/plans/2026-07-03-better-widgets-providers-permissions.md`](docs/superpowers/plans/2026-07-03-better-widgets-providers-permissions.md)
 **Plan 3a (coquille d'app + Mes widgets, ce qui est fait)** : [spec](docs/superpowers/specs/2026-07-04-better-widgets-ui-3a-design.md) · [plan](docs/superpowers/plans/2026-07-04-better-widgets-ui-3a.md)
+**Plan 3b-1 (éditeur params + preview live + secrets Keychain, ce qui est fait)** : [spec](docs/superpowers/specs/2026-07-04-better-widgets-ui-3b1-design.md) · [plan](docs/superpowers/plans/2026-07-04-better-widgets-ui-3b1.md)
 
 ## Stack
 
@@ -91,13 +92,14 @@ xcodegen generate && xcodebuild test -project BetterWidgets.xcodeproj -scheme Be
   -destination 'platform=macOS' -quiet
 ```
 
-75 tests (`ManifestTests`, `Plan2ManifestTests`, `SharedStoreTests`, `TemplateStoreTests`,
-`RenderEngineTests`, `NavigationPolicyTests`, `TemplateAssetSchemeHandlerTests`,
-`DataProviderTests`, `RSSDataProviderTests`, `RSSFeedParserTests`, `CalendarDataProviderTests`,
-`WeatherDataProviderTests`, `PermissionStoreTests`, `RenderPipelineTests`, `SchedulerTests`,
-`WidgetSizeTests`, `SmokeTests`, `DesignTokensTests`, `AppStateTests`, `WidgetCardModelTests`).
+93 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
+RenderEngine, NavigationPolicy, TemplateAssetSchemeHandler, DataProvider, RSSDataProvider,
+RSSFeedParser, CalendarDataProvider, WeatherDataProvider, PermissionStore, RenderPipeline,
+Scheduler, WidgetSize, Smoke, DesignTokens, AppState, WidgetCardModel), Plan 3b-1 ajoute
+`KeychainStoreTests`, `SecretResolverTests`, `WidgetEditorModelTests`.
 Doit rester vert avant tout commit. Les vues SwiftUI n'ont pas de tests unitaires (gate = build vert
-+ vérif réelle) ; la logique (CRUD, model, scheduler, store, tokens) est testée.
++ vérif réelle) ; la logique (CRUD, model, scheduler, store, tokens, secrets/resolver, éditeur) est testée.
+Secrets en test : toujours un `SecretBackingStore` mémoire, jamais le vrai Keychain.
 
 Smoke E2E (build + lance l'app + vérifie les PNG dans l'App Group) : `./scripts/smoke.sh` — voir
 [`README.md`](README.md) pour le détail de ce qu'il fait et pourquoi il tue le process par son nom
@@ -144,9 +146,20 @@ messages de commit.
     mémoïsé ; `enum Section` shadow `SwiftUI.Section` ; race orphelin-PNG sur delete-pendant-rendu
     (guard `writeRender`) ; auto-open once-at-launch (revisitable avec macOS 15 `.defaultLaunchBehavior(.suppressed)`).
     **Vérif visuelle bureau à faire par Maxim** (l'écran de la machine de test était verrouillé).
-  - **3b — Éditeur** : formulaire de params généré du manifest + **preview live** (vraie webview) +
-    mode avancé code (CodeMirror). Branche le bouton « Éditer » des cartes. Inclura les secrets `json`
-    dans le Keychain (saisis au niveau de l'instance).
+  - **3b — Éditeur** : scindé en 3b-1 + 3b-2.
+    - **3b-1 — Params + preview + secrets** (`feat/fondations`) : **fait**. Bouton « Éditer » activé →
+      `WidgetEditorView` (.sheet) : formulaire de params généré du manifest (préremplit les défauts) +
+      **preview live WKWebView** (mêmes `window.BW`/`bwasset://`/`NavigationPolicy` que le moteur → la
+      preview = le rendu final ; toggles taille/thème). Secrets d'API des sources `json` : convention
+      `secret.<Header>` dans la config → `SecureField` → stockés au **Keychain** (`KeychainStore`/
+      `SecretResolver`, clé `<uuid>.<sourceKey>.<header>`), résolus en `header.<H>` **dans
+      `RenderPipeline`** (protocole `DataProvider` intact), purgés à la suppression du widget. Secrets
+      **jamais** dans `instances.json` ni `window.BW` ; la preview les résout via un resolver **en
+      mémoire** (aucune écriture Keychain avant « Enregistrer »). `AppState.updateInstance`.
+      Dette fast-follow : factoriser le resolve/partition dupliqué entre `RenderPipeline.refresh` et
+      `fetchPreviewData`.
+    - **3b-2 — Mode avancé code** : à venir. CodeMirror embarqué (WKWebView) pour écrire/forker des
+      templates HTML/manifest à la main.
   - **3c — Partage & consentement** : import/export `.bwidget` (⚠️ le confinement symlink-safe de la
     WebView, fait en Plan 2, est un **prérequis dur** avant l'import), UI de consentement (grants du
     `PermissionStore`), + météo par localisation courante (`CLLocationManager`).
