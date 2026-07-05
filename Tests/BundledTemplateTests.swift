@@ -154,4 +154,11 @@ final class BundledTemplateTests: XCTestCase {
         let data: [String: Any] = ["svc": ["services": [["name": "web", "up": true, "ms": 30]]]]
         try await assertRenders("status", data: data)
     }
+
+    @MainActor
+    func testStatusRendersUnreachable() async throws {
+        // No usable services (endpoint unreachable / empty payload) must fall back to the
+        // "Endpoint injoignable" layout + stale marker, not throw or render an empty widget.
+        try await assertRenders("status", data: ["svc": [String: Any]()])
+    }
 }

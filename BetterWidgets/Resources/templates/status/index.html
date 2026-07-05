@@ -96,9 +96,13 @@ function render(bw){
 
   /* Accept either shape for data.svc: a bare array of services, or an
      object wrapping them under `.services` — the user's endpoint is
-     free to shape its JSON either way. */
+     free to shape its JSON either way. `.services` itself must still be
+     validated as an array: a malformed endpoint can send it as a non-array
+     (object/string), which must fall through to the "unreachable" state
+     below rather than crash .filter/.map further down. */
   var svc=d.svc;
-  var list=Array.isArray(svc)?svc:(svc && svc.services)||[];
+  var raw=Array.isArray(svc)?svc:(svc && svc.services);
+  var list=Array.isArray(raw)?raw:[];
 
   if(!list.length){
     var hdOnly='<div class="hd"><span class="ttl">'+esc(title)+'</span></div>';
