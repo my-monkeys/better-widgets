@@ -1,0 +1,16 @@
+{
+  "id": "weather",
+  "name": "Météo",
+  "version": "1.0.0",
+  "sizes": ["small", "medium", "large"],
+  "refresh": 900,
+  "params": [
+    { "key": "lat", "type": "string", "label": "Latitude", "default": "43.6047" },
+    { "key": "lon", "type": "string", "label": "Longitude", "default": "3.8742" },
+    { "key": "place", "type": "string", "label": "Lieu", "default": "Montpellier" }
+  ],
+  "sources": [
+    { "key": "wx", "type": "json",
+      "config": { "url": "https://api.open-meteo.com/v1/forecast?latitude={{lat}}&longitude={{lon}}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min,weather_code&timezone=auto&forecast_days=5" } }
+  ]
+}

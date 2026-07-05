@@ -1,0 +1,229 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from dogfood/dashboard/index.html. Every later
+   bundled template starts from this same block.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — crypto
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:12px 14px}
+
+.hd{flex:0 0 auto;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.hd .ttl{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:-.01em}
+.hd .cur{margin-left:auto;font-size:10.5px;font-weight:600;color:var(--text-3);
+  text-transform:uppercase;letter-spacing:.05em}
+[data-size="small"] .hd{display:none}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center}
+
+.coins{flex:1 1 auto;min-height:0;display:flex;gap:16px}
+[data-size="small"] .coins{flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;gap:4px}
+
+.coin{flex:1 1 0;min-width:0;display:flex;flex-direction:column}
+[data-size="small"] .coin{flex:0 0 auto;width:100%;align-items:center}
+
+.coin .sym{display:flex;align-items:baseline;gap:6px;min-width:0}
+[data-size="small"] .coin .sym{justify-content:center}
+.coin .tk{font-size:12px;font-weight:700}
+[data-size="small"] .coin .tk{font-size:14px}
+.coin .nm{font-size:11px;color:var(--text-2);font-weight:500;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+[data-size="small"] .coin .nm{display:none}
+
+.coin .px{font-size:21px;font-weight:700;margin-top:3px;letter-spacing:-.01em}
+[data-size="small"] .coin .px{font-size:34px;margin-top:5px}
+
+.coin .chg{display:flex;align-items:center;gap:4px;font-size:12px;font-weight:600;margin-top:2px}
+[data-size="small"] .coin .chg{font-size:13px}
+.coin .chg .ic{display:inline-flex;width:9px}
+.coin .chg .ic svg{width:9px;display:block}
+
+.coin .spark{margin-top:auto;padding-top:6px}
+.coin .spark svg{display:block;width:100%}
+[data-size="small"] .coin .spark{width:100%;margin-top:10px}
+
+.coin .miss{color:var(--text-3);font-size:11.5px;margin-top:2px}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from dogfood/dashboard/index.html and
+   dogfood/gallery.html. Every later bundled template starts
+   from this same block, adding whatever icons/helpers it needs.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* icons — Font Awesome free solid, inlined (CSP-safe, currentColor).
+   up/down copied verbatim from dogfood/gallery.html (I.up / I.down). */
+var ICON={
+up:'<svg viewBox="0 0 320 512"><path fill="currentColor" d="M140.3 135.2c12.6-10.3 31.1-9.5 42.8 2.2l128 128c9.2 9.2 11.9 22.9 6.9 34.9S301.4 320 288.5 320l-256 0c-12.9 0-24.6-7.8-29.6-19.8S.7 274.5 9.9 265.4l128-128 2.4-2.2z"/></svg>',
+down:'<svg viewBox="0 0 320 512"><path fill="currentColor" d="M140.3 376.8c12.6 10.2 31.1 9.5 42.8-2.2l128-128c9.2-9.2 11.9-22.9 6.9-34.9S301.4 192 288.5 192l-256 0c-12.9 0-24.6 7.8-29.6 19.8S.7 237.5 9.9 246.6l128 128 2.4 2.2z"/></svg>'
+};
+
+/* smooth sparklines: Catmull-Rom → cubic bézier (Chart.js-like tension), zero-dependency */
+function pointsOf(vals,w,h,pad,mn,mx){
+  var rng=(mx-mn)||1,n=vals.length;
+  return vals.map(function(v,i){
+    return [ (n===1?w/2:i/(n-1)*w), h-pad-((v-mn)/rng)*(h-2*pad) ];
+  });
+}
+function smooth(p){
+  if(!p.length) return '';
+  if(p.length===1) return 'M'+p[0][0].toFixed(1)+' '+p[0][1].toFixed(1);
+  var d='M'+p[0][0].toFixed(1)+' '+p[0][1].toFixed(1);
+  for(var i=0;i<p.length-1;i++){
+    var p0=p[i-1]||p[i],p1=p[i],p2=p[i+1],p3=p[i+2]||p2;
+    var c1x=p1[0]+(p2[0]-p0[0])/6, c1y=p1[1]+(p2[1]-p0[1])/6;
+    var c2x=p2[0]-(p3[0]-p1[0])/6, c2y=p2[1]-(p3[1]-p1[1])/6;
+    d+=' C'+c1x.toFixed(1)+' '+c1y.toFixed(1)+' '+c2x.toFixed(1)+' '+c2y.toFixed(1)+' '+p2[0].toFixed(1)+' '+p2[1].toFixed(1);
+  }
+  return d;
+}
+function spark(vals,col,h){
+  h=h||40;
+  var w=100,pad=4,mn=Math.min.apply(null,vals),mx=Math.max.apply(null,vals);
+  var d=smooth(pointsOf(vals,w,h,pad,mn,mx));
+  return '<svg viewBox="0 0 '+w+' '+h+'" preserveAspectRatio="none">'+
+    '<path d="'+d+' L '+w+' '+h+' L 0 '+h+' Z" style="fill:'+col+';fill-opacity:.14"/>'+
+    '<path d="'+d+'" vector-effect="non-scaling-stroke" style="fill:none;stroke:'+col+';stroke-width:2px;stroke-linecap:round;stroke-linejoin:round"/></svg>';
+}
+
+/* ============================================================
+   Template logic — crypto (CoinGecko simple/price + market_chart)
+   ============================================================ */
+var COIN_META={
+  bitcoin:{symbol:'BTC',name:'Bitcoin',color:'#F7931A'},
+  ethereum:{symbol:'ETH',name:'Ethereum',color:'#627EEA'},
+  solana:{symbol:'SOL',name:'Solana',color:'#14F195'},
+  cardano:{symbol:'ADA',name:'Cardano',color:'#0033AD'},
+  dogecoin:{symbol:'DOGE',name:'Dogecoin',color:'#C2A633'},
+  ripple:{symbol:'XRP',name:'XRP',color:'#23292F'},
+  litecoin:{symbol:'LTC',name:'Litecoin',color:'#345D9D'},
+  polkadot:{symbol:'DOT',name:'Polkadot',color:'#E6007A'},
+  binancecoin:{symbol:'BNB',name:'BNB',color:'#F3BA2F'},
+  tether:{symbol:'USDT',name:'Tether',color:'#26A17B'},
+  'usd-coin':{symbol:'USDC',name:'USD Coin',color:'#2775CA'}
+};
+function coinMeta(id){
+  if(COIN_META[id]) return COIN_META[id];
+  var letters=id.replace(/[^a-z0-9]/gi,'');
+  return {
+    symbol:(letters.slice(0,4)||id).toUpperCase(),
+    name:id.replace(/[-_]/g,' ').replace(/\b\w/g,function(c){return c.toUpperCase();}),
+    color:'var(--accent)'
+  };
+}
+function fmtGroup(intPart){ return intPart.replace(/\B(?=(\d{3})+(?!\d))/g,' '); }
+function fmtPrice(n){
+  if(typeof n!=='number'||isNaN(n)) return '—';
+  var decimals = n>=1000?0 : n>=1?2 : n>=0.01?4 : 6;
+  var parts=n.toFixed(decimals).split('.');
+  parts[0]=fmtGroup(parts[0]);
+  return parts.join(',');
+}
+function fmtChg(n){ return Math.abs(n).toFixed(1).replace('.',','); }
+function chartValues(chart){
+  if(!chart || !Array.isArray(chart.prices) || !chart.prices.length) return null;
+  var vals=chart.prices.map(function(p){ return Array.isArray(p)?p[1]:null; })
+    .filter(function(v){ return typeof v==='number'; });
+  return vals.length?vals:null;
+}
+
+function coinColumn(id,coin,vs,sparkVals){
+  var meta=coinMeta(id);
+  var sym='<span class="tk" style="color:'+meta.color+'">'+esc(meta.symbol)+'</span>'+
+    '<span class="nm">'+esc(meta.name)+'</span>';
+  if(!coin || typeof coin[vs]!=='number'){
+    return '<div class="coin"><div class="sym">'+sym+'</div><div class="miss">Indisponible</div></div>';
+  }
+  var chg=typeof coin[vs+'_24h_change']==='number'?coin[vs+'_24h_change']:0;
+  var up=chg>=0;
+  var col=up?'var(--green)':'var(--red)';
+  var caret=up?ICON.up:ICON.down;
+  var sparkHtml=sparkVals?'<div class="spark">'+spark(sparkVals,'var(--orange)',34)+'</div>':'';
+  return '<div class="coin"><div class="sym">'+sym+'</div>'+
+    '<div class="px tnum">$'+fmtPrice(coin[vs])+'</div>'+
+    '<div class="chg tnum" style="color:'+col+'"><span class="ic">'+caret+'</span>'+fmtChg(chg)+'%</div>'+
+    sparkHtml+'</div>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'medium';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{}, params=(bw&&bw.params)||{};
+  var el=document.getElementById('root');
+  el.className=(bw&&bw.stale?'stale':'');
+
+  var price=d.price;
+  if(!price || typeof price!=='object'){
+    el.innerHTML='<div class="wrap"><div class="muted">Cours indisponible</div></div>';
+    return;
+  }
+
+  var vs=(params.vs||'usd').trim();
+  var idsList=(params.ids||'').split(',').map(function(s){return s.trim();}).filter(Boolean);
+  var chartId=(params.chart_id||'').trim() || idsList[0] || '';
+  var sparkVals=chartValues(d.chart);
+
+  var hd='<div class="hd"><span class="ttl">Crypto</span><span class="cur">'+esc(vs.toUpperCase())+'</span></div>';
+
+  var coinsHtml;
+  if(fam==='small'){
+    coinsHtml=coinColumn(chartId, price[chartId], vs, sparkVals);
+  } else {
+    var list=(idsList.length?idsList:Object.keys(price)).slice(0,2);
+    coinsHtml=list.map(function(id){
+      return coinColumn(id, price[id], vs, id===chartId?sparkVals:null);
+    }).join('');
+  }
+
+  el.innerHTML='<div class="wrap">'+hd+'<div class="coins">'+coinsHtml+'</div></div>';
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
+</script></body></html>

@@ -1,0 +1,134 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — status (self-hosted service monitoring)
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:12px 14px}
+
+.hd{flex:0 0 auto;margin-bottom:8px;display:flex;align-items:center;gap:8px}
+.hd .ttl{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:-.01em;
+  text-transform:uppercase}
+.hd .pct{margin-left:auto;font-size:12px;font-weight:700;color:var(--text-2)}
+[data-size="medium"] .hd{margin-bottom:6px}
+
+.list{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;gap:7px;overflow:hidden}
+[data-size="medium"] .list{gap:5px}
+
+.row{flex:0 0 auto;display:flex;align-items:center;gap:9px}
+.row .dot{flex:0 0 auto;width:8px;height:8px;border-radius:50%}
+.row .name{flex:1 1 auto;min-width:0;font-size:13px;font-weight:600;letter-spacing:-.005em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-size="medium"] .row .name{font-size:12.5px}
+.row .ms{flex:0 0 auto;font-size:11.5px;font-weight:600;color:var(--text-2)}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* ============================================================
+   Template logic — status (self-hosted monitoring endpoint)
+   ============================================================ */
+function svcRow(s){
+  var up=!!(s && s.up);
+  var color=up?'var(--green)':'var(--red)';
+  var ms=(s && typeof s.ms==='number')?'<span class="ms tnum">'+Math.round(s.ms)+' ms</span>':'';
+  return '<div class="row"><span class="dot" style="background:'+color+'"></span>'+
+    '<span class="name">'+esc((s&&s.name)||'—')+'</span>'+ms+'</div>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'large';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{}, params=(bw&&bw.params)||{};
+  var title=params.title||'Services';
+  var el=document.getElementById('root');
+
+  /* Accept either shape for data.svc: a bare array of services, or an
+     object wrapping them under `.services` — the user's endpoint is
+     free to shape its JSON either way. `.services` itself must still be
+     validated as an array: a malformed endpoint can send it as a non-array
+     (object/string), which must fall through to the "unreachable" state
+     below rather than crash .filter/.map further down. */
+  var svc=d.svc;
+  var raw=Array.isArray(svc)?svc:(svc && svc.services);
+  var list=Array.isArray(raw)?raw:[];
+
+  if(!list.length){
+    var hdOnly='<div class="hd"><span class="ttl">'+esc(title)+'</span></div>';
+    el.className='stale';
+    el.innerHTML='<div class="wrap">'+hdOnly+'<div class="muted">Endpoint injoignable</div></div>';
+    return;
+  }
+
+  el.className=(bw&&bw.stale?'stale':'');
+
+  var upCount=list.filter(function(s){ return !!(s&&s.up); }).length;
+  var pct=Math.round(100*upCount/list.length);
+  var hd='<div class="hd"><span class="ttl">'+esc(title)+'</span>'+
+    '<span class="pct tnum">'+pct+'% up</span></div>';
+
+  var rows=list.map(svcRow).join('');
+  el.innerHTML='<div class="wrap">'+hd+'<div class="list">'+rows+'</div></div>';
+
+  /* Self-hosted endpoints can report an arbitrary number of services —
+     trim trailing rows against the real measured layout (as in agenda/
+     index.html) so nothing is ever half-clipped by .list{overflow:hidden}. */
+  var listEl=el.querySelector('.list');
+  while(listEl && listEl.scrollHeight>listEl.clientHeight && listEl.lastElementChild){
+    listEl.removeChild(listEl.lastElementChild);
+  }
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
+</script></body></html>

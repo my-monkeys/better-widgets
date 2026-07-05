@@ -102,13 +102,14 @@ xcodegen generate && xcodebuild test -project BetterWidgets.xcodeproj -scheme Be
   -destination 'platform=macOS' -quiet
 ```
 
-121 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
+154 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
 RenderEngine, NavigationPolicy, TemplateAssetSchemeHandler, DataProvider, RSSDataProvider,
 RSSFeedParser, CalendarDataProvider, WeatherDataProvider, PermissionStore, RenderPipeline,
 Scheduler, WidgetSize, Smoke, DesignTokens, AppState, WidgetCardModel), Plan 3b-1 ajoute
 `KeychainStoreTests`, `SecretResolverTests`, `WidgetEditorModelTests` ; Plan 3b-2 ajoute
 `TemplateStoreWriteTests`, `TemplateEditorModelTests` ; Plan 3c ajoute `BWidgetArchiveTests`,
-`BWidgetImporterTests` (8, la surface d'import), `PermissionConsentModelTests`.
+`BWidgetImporterTests` (8, la surface d'import), `PermissionConsentModelTests` ; Plan 4a ajoute
+`BundledTemplateTests` (validation manifest + rendu `window.BW` mocké des 8 templates maison + bootstrap).
 Doit rester vert avant tout commit. Les vues SwiftUI n'ont pas de tests unitaires (gate = build vert
 + vérif réelle) ; la logique (CRUD, model, scheduler, store, tokens, secrets/resolver, éditeur) est testée.
 Secrets en test : toujours un `SecretBackingStore` mémoire, jamais le vrai Keychain.
@@ -126,7 +127,7 @@ messages de commit.
 ## État d'avancement des plans
 
 - **Plan 1 — Fondations** (`feat/fondations`, ce plan) : **fait**. Pipeline bout-en-bout : app →
-  bootstrap → rendu `hello-clock` (clair+sombre) → App Group → extension enregistrée
+  bootstrap → rendu du template démo (clair+sombre) → App Group → extension enregistrée
   (`fr.my-monkey.BetterWidgets.WidgetExtension`). Scheduler, `DataProviderRegistry` (`json`/`system`),
   3 kinds de widget configurables par `AppIntentConfiguration`. UI = menu bar minimal seulement.
 - **Plan 2 — Providers & permissions** (`feat/fondations`) : **fait**. `SourceSpec.knownTypes`
@@ -143,8 +144,8 @@ messages de commit.
   WebView : `NavigationPolicy` n'autorise que `https`/`about`/`data`/`bwasset`, tout `file://` (et
   le reste) est annulé ; `TemplateAssetSchemeHandler` sert les assets de template via
   `bwasset://template/<path>` confiné à `templateDir` (aucun accès filesystem direct depuis la
-  WebView). Trois templates démo bundlés exercent ces providers : `feed-list` (rss, sans
-  permission), `agenda` (calendar, gère `__denied`), `weather-now` (weather, gère `__denied`).
+  WebView). L'app livre désormais 8 templates maison (`weather`, `crypto`, `system`, `news`,
+  `agenda`, `status`, `home`, `github` — voir Plan 4) qui exercent ces providers.
   Reportés au Plan 3 (assumé dès l'écriture du plan) : secrets `json` dans le Keychain (se
   saisissent dans l'éditeur d'instance, pas encore construit) et la météo par localisation
   courante (`CLLocationManager`) — Plan 2 ne fait que `city`/`lat`+`lon`.

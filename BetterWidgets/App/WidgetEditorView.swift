@@ -52,12 +52,22 @@ struct WidgetEditorView: View {
                 Spacer()
                 Button("Rafraîchir l'aperçu") { Task { await fetchPreviewData() } }
             }
-            LivePreviewView(html: html, templateDir: templateDir,
-                            context: model.previewContext(data: previewData, stale: previewStale))
-                .frame(width: model.previewSize.pointSize.width, height: model.previewSize.pointSize.height)
-                .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.preview).stroke(DesignTokens.separator, lineWidth: 1))
+            GeometryReader { geo in
+                let pt = model.previewSize.pointSize
+                // Scale the preview to fit the available pane so the whole widget stays visible
+                // (never upscale past its true size — keeps it sharp and size-accurate). Without
+                // this, a widget whose point size exceeds the pane (esp. `large` 364×382) is
+                // clipped and you can't see the bottom elements.
+                let scale = min(geo.size.width / pt.width, geo.size.height / pt.height, 1)
+                LivePreviewView(html: html, templateDir: templateDir,
+                                context: model.previewContext(data: previewData, stale: previewStale))
+                    .frame(width: pt.width, height: pt.height)
+                    .overlay(RoundedRectangle(cornerRadius: DesignTokens.Radius.preview).stroke(DesignTokens.separator, lineWidth: 1))
+                    .scaleEffect(scale)
+                    .frame(width: geo.size.width, height: geo.size.height)
+            }
         }
-        .frame(maxWidth: .infinity, alignment: .top)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
         .task { await fetchPreviewData() }
     }
 

@@ -1,0 +1,160 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — github (repo stats)
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:12px 14px}
+[data-size="small"] .wrap{align-items:center;justify-content:center;text-align:center}
+
+.hd{flex:0 0 auto;width:100%;display:flex;align-items:baseline;gap:6px;min-width:0}
+[data-size="small"] .hd{justify-content:center}
+.hd .name{font-size:13.5px;font-weight:700;letter-spacing:-.01em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;min-width:0}
+[data-size="small"] .hd .name{font-size:13px;max-width:100%}
+.hd .when{margin-left:auto;font-size:10px;color:var(--text-3);font-weight:500;
+  white-space:nowrap;flex:0 0 auto}
+
+.desc{flex:0 0 auto;margin-top:4px;font-size:11.5px;line-height:1.35;color:var(--text-2);
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+.stats{flex:1 1 auto;min-height:0;display:flex;align-items:center;gap:16px}
+[data-size="small"] .stats{flex-direction:column;justify-content:center;gap:8px;margin-top:6px}
+[data-size="medium"] .stats{margin-top:8px}
+
+.stat{display:flex;align-items:center;gap:5px}
+.stat .i{display:inline-flex;flex:0 0 auto}
+.stat .i svg{width:13px;height:13px;display:block}
+[data-size="small"] .stat .i svg{width:15px;height:15px}
+.stat .n{font-size:15px;font-weight:700}
+[data-size="small"] .stat .n{font-size:20px}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* icons — Font Awesome free solid, inlined (CSP-safe, currentColor) */
+var ICON={
+star:'<svg viewBox="0 0 576 512"><path fill="currentColor" d="M309.5-18.9c-4.1-8-12.4-13.1-21.4-13.1s-17.3 5.1-21.4 13.1L193.1 125.3 33.2 150.7c-8.9 1.4-16.3 7.7-19.1 16.3s-.5 18 5.8 24.4l114.4 114.5-25.2 159.9c-1.4 8.9 2.3 17.9 9.6 23.2s16.9 6.1 25 2L288.1 417.6 432.4 491c8 4.1 17.7 3.3 25-2s11-14.2 9.6-23.2L441.7 305.9 556.1 191.4c6.4-6.4 8.6-15.8 5.8-24.4s-10.1-14.9-19.1-16.3L383 125.3 309.5-18.9z"/></svg>',
+fork:'<svg viewBox="0 0 448 512"><path fill="currentColor" d="M80 104a24 24 0 1 0 0-48 24 24 0 1 0 0 48zm80-24c0 32.8-19.7 61-48 73.3l0 22.7c0 26.5 21.5 48 48 48l128 0c26.5 0 48-21.5 48-48l0-22.7c-28.3-12.3-48-40.5-48-73.3 0-44.2 35.8-80 80-80s80 35.8 80 80c0 32.8-19.7 61-48 73.3l0 22.7c0 61.9-50.1 112-112 112l-32 0 0 70.7c28.3 12.3 48 40.5 48 73.3 0 44.2-35.8 80-80 80s-80-35.8-80-80c0-32.8 19.7-61 48-73.3l0-70.7-32 0C98.1 288 48 237.9 48 176l0-22.7C19.7 141 0 112.8 0 80 0 35.8 35.8 0 80 0s80 35.8 80 80zm208 24a24 24 0 1 0 0-48 24 24 0 1 0 0 48zM248 432a24 24 0 1 0 -48 0 24 24 0 1 0 48 0z"/></svg>',
+issue:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M256 512a256 256 0 1 0 0-512 256 256 0 1 0 0 512zm0-352a96 96 0 1 1 0 192 96 96 0 1 1 0-192z"/></svg>'
+};
+
+/* ============================================================
+   Template logic — github (repo /repos/{owner}/{repo})
+   ============================================================ */
+function relTime(iso){
+  if(!iso) return '';
+  var t=Date.parse(iso);
+  if(isNaN(t)) return '';
+  var diffMs=Math.max(0, Date.now()-t);
+  var min=Math.floor(diffMs/60000);
+  if(min<1) return "à l'instant";
+  if(min<60) return min+" min";
+  var h=Math.floor(min/60);
+  if(h<24) return h+" h";
+  var j=Math.floor(h/24);
+  if(j<30) return j+" j";
+  var mo=Math.floor(j/30);
+  if(mo<12) return mo+" mois";
+  var y=Math.floor(mo/12);
+  return y+" an"+(y>1?'s':'');
+}
+
+function fmtCount(n){
+  if(typeof n!=='number'||isNaN(n)) return '0';
+  var abs=Math.abs(n);
+  if(abs<1000) return String(n);
+  if(abs<1000000) return (Math.round(n/100)/10).toString().replace('.',',')+'k';
+  return (Math.round(n/100000)/10).toString().replace('.',',')+'M';
+}
+
+function statItem(icon,color,n){
+  return '<span class="stat"><span class="i" style="color:'+color+'">'+icon+'</span>'+
+    '<span class="n tnum">'+fmtCount(n)+'</span></span>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'small';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{};
+  var el=document.getElementById('root');
+
+  var gh=d.gh;
+  if(!gh || typeof gh!=='object' || gh.message){
+    el.className='stale';
+    el.innerHTML='<div class="wrap"><div class="muted">Repo introuvable</div></div>';
+    return;
+  }
+
+  el.className=(bw&&bw.stale?'stale':'');
+
+  var name=gh.full_name||'—';
+  var isMedium=fam==='medium';
+  var when=(isMedium && gh.pushed_at)?relTime(gh.pushed_at):'';
+  var hd='<div class="hd"><span class="name">'+esc(name)+'</span>'+
+    (when?'<span class="when tnum">pushé il y a '+esc(when)+'</span>':'')+'</div>';
+
+  var desc=(isMedium && gh.description)?'<div class="desc">'+esc(gh.description)+'</div>':'';
+
+  var stats='<div class="stats">'+
+    statItem(ICON.star,'var(--orange)',gh.stargazers_count)+
+    statItem(ICON.fork,'var(--accent)',gh.forks_count)+
+    statItem(ICON.issue,'var(--red)',gh.open_issues_count)+
+    '</div>';
+
+  el.innerHTML='<div class="wrap">'+hd+desc+stats+'</div>';
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
+</script></body></html>

@@ -1,0 +1,9 @@
+{
+  "id": "news", "name": "Actus", "version": "1.0.0",
+  "sizes": ["medium", "large"], "refresh": 1800,
+  "params": [
+    { "key": "feed", "type": "url", "label": "Flux RSS", "default": "https://www.lemonde.fr/rss/une.xml" },
+    { "key": "title", "type": "string", "label": "Titre", "default": "Actus" }
+  ],
+  "sources": [ { "key": "rss", "type": "rss", "config": { "url": "{{feed}}" } } ]
+}

@@ -38,7 +38,13 @@ final class RenderEngine: NSObject {
 
         let webView = WKWebView(frame: CGRect(origin: .zero, size: size), configuration: config)
         webView.appearance = NSAppearance(named: context.theme == .dark ? .darkAqua : .aqua)
-        webView.pageZoom = 2
+        // @2x supersampling comes from `snapshotWidth` below alone (WebKit renders text/vectors
+        // at that target resolution, not a naive bitmap upscale). Do NOT also set `pageZoom`:
+        // page zoom halves the *effective CSS layout viewport* for the same frame extent (a
+        // 364pt-wide frame at pageZoom=2 lays out as if only ~182 CSS px were available — proven
+        // by comparing getBoundingClientRect() with/without it), silently starving any
+        // content-dense template of half its declared WidgetSize.pointSize while simple/sparse
+        // templates never noticed. Templates are authored for the full pointSize; keep zoom at 1.
         webView.setValue(false, forKey: "drawsBackground") // transparent by default; template paints its own bg
 
         let navDelegate = NavDelegate()

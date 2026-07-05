@@ -1,29 +1,167 @@
 <!doctype html><html><head><meta charset="utf-8"><style>
-  html,body{margin:0;width:100%;height:100%;overflow:hidden;
-    font-family:-apple-system,"SF Pro Text",sans-serif;background:#f7f9fc;color:#152238}
-  @media (prefers-color-scheme:dark){body{background:#0d1420;color:#e7edf6}}
-  .wrap{padding:14px 16px}.h{font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.55}
-  .row{display:flex;gap:10px;padding:8px 0;border-top:1px solid rgba(128,128,128,.18);font-size:14px}
-  .row:first-of-type{border-top:none}.t{font-variant-numeric:tabular-nums;opacity:.7;min-width:44px}
-  .empty{opacity:.5;font-size:13px;margin-top:20px;text-align:center}
-</style></head><body><div class="wrap">
-<div class="h">Agenda</div><div id="body"></div></div>
-<script>
-  const cal = window.BW.data.cal || {};
-  const body = document.getElementById("body");
-  if (cal.__denied) {
-    body.innerHTML = '<div class="empty">Autorise l\'accès au calendrier dans Better Widgets</div>';
-  } else {
-    const events = (cal.events || []).slice(0, 5);
-    if (!events.length) { body.innerHTML = '<div class="empty">Rien à venir</div>'; }
-    events.forEach(ev => {
-      const d = new Date(ev.start);
-      const row = document.createElement("div"); row.className = "row";
-      const t = document.createElement("span"); t.className = "t";
-      t.style.color = window.BW.params.accent;
-      t.textContent = ev.allDay ? "—" : d.toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"});
-      const title = document.createElement("span"); title.textContent = ev.title;
-      row.appendChild(t); row.appendChild(title); body.appendChild(row);
-    });
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
   }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — agenda
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:12px 14px}
+
+.hd{flex:0 0 auto;margin-bottom:8px}
+.hd .ttl{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:-.01em;
+  text-transform:uppercase}
+[data-size="medium"] .hd{margin-bottom:5px}
+
+.list{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;overflow:hidden}
+
+.dayh{flex:0 0 auto;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+  color:var(--text-3);margin:8px 0 3px}
+.dayh:first-child{margin-top:0}
+
+.ev{flex:0 0 auto;display:flex;align-items:center;gap:8px;padding:4px 0}
+.dot{flex:0 0 auto;width:7px;height:7px;border-radius:50%}
+.time{flex:0 0 auto;width:38px;font-size:11.5px;font-weight:600;color:var(--text-2);text-align:right}
+.evb{flex:1 1 auto;min-width:0}
+.title{font-size:13px;font-weight:600;letter-spacing:-.005em;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis}
+[data-size="medium"] .title{font-size:12.5px}
+.loc{font-size:10.5px;color:var(--text-3);font-weight:500;white-space:nowrap;
+  overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center;padding:0 8px}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* ============================================================
+   Template logic — agenda (EventKit)
+   ============================================================ */
+var DOW=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
+
+function isoDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
+
+/* "AUJOURD’HUI" / "DEMAIN" for the next two calendar days, else "Lun 7". */
+function dayLabel(start,now){
+  var key=isoDate(start), todayKey=isoDate(now);
+  if(key===todayKey) return 'AUJOURD’HUI';
+  var tomorrow=new Date(now.getTime()+864e5);
+  if(key===isoDate(tomorrow)) return 'DEMAIN';
+  return DOW[start.getDay()]+' '+start.getDate();
+}
+
+function eventRow(ev,isLarge){
+  var start=new Date(ev.start);
+  var time=ev.allDay?'∙':pad2(start.getHours())+':'+pad2(start.getMinutes());
+  var loc=isLarge&&ev.location?'<div class="loc">'+esc(ev.location)+'</div>':'';
+  return '<div class="ev"><span class="dot" style="background:var(--accent)"></span>'+
+    '<span class="time tnum">'+time+'</span>'+
+    '<div class="evb"><div class="title">'+esc(ev.title||'Sans titre')+'</div>'+loc+'</div></div>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'large';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{};
+  var el=document.getElementById('root');
+  el.className=(bw&&bw.stale?'stale':'');
+
+  var hd='<div class="hd"><span class="ttl">Agenda</span></div>';
+  var cal=d.cal||{};
+
+  if(cal.__denied===true){
+    el.innerHTML='<div class="wrap">'+hd+'<div class="muted">Autorise l’agenda dans Better Widgets</div></div>';
+    return;
+  }
+
+  var now=new Date();
+  var events=Array.isArray(cal.events)?cal.events.slice():[];
+  events.sort(function(a,b){ return new Date(a.start)-new Date(b.start); });
+  events=events.filter(function(ev){
+    var end=ev.end?new Date(ev.end):new Date(ev.start);
+    return end>=now;
+  });
+
+  if(!events.length){
+    el.innerHTML='<div class="wrap">'+hd+'<div class="muted">Rien à venir</div></div>';
+    return;
+  }
+
+  var isLarge=fam==='large';
+  var shown=events.slice(0, isLarge?8:3);
+  var rows='', lastDay='';
+  shown.forEach(function(ev){
+    if(isLarge){
+      var lbl=dayLabel(new Date(ev.start), now);
+      if(lbl!==lastDay){ rows+='<div class="dayh">'+lbl+'</div>'; lastDay=lbl; }
+    }
+    rows+=eventRow(ev, isLarge);
+  });
+
+  el.innerHTML='<div class="wrap">'+hd+'<div class="list">'+rows+'</div></div>';
+
+  /* Day headers (large only) add vertical cost the flat per-event cap above
+     doesn't account for: a calendar spread thin across many distinct days
+     (many .dayh) can still overflow .list even at the same event count as a
+     single busy day. Trim trailing rows against the real measured layout so
+     nothing is ever half-clipped by .list{overflow:hidden}. */
+  if(isLarge){
+    var list=el.querySelector('.list');
+    while(list && list.scrollHeight>list.clientHeight && list.lastElementChild){
+      list.removeChild(list.lastElementChild);
+    }
+    while(list && list.lastElementChild && list.lastElementChild.classList.contains('dayh')){
+      list.removeChild(list.lastElementChild);
+    }
+  }
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
 </script></body></html>

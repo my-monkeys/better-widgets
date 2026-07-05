@@ -1,0 +1,181 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from dogfood/dashboard/index.html. Every later
+   bundled template starts from this same block.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — system
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:12px 14px}
+[data-size="small"] .wrap{align-items:center;justify-content:center;text-align:center}
+
+.hd{flex:0 0 auto;display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.hd .ttl{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:-.01em}
+.hd .cur{margin-left:auto;font-size:16px;font-weight:700;letter-spacing:-.02em}
+[data-size="small"] .hd{display:none}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center}
+
+.rings{flex:1 1 auto;min-height:0;display:flex;align-items:center;justify-content:center;gap:22px}
+
+.ringCol{display:flex;flex-direction:column;align-items:center;gap:7px}
+
+.gauge{position:relative;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+.gauge svg{display:block}
+[data-size="small"] .gauge svg{width:104px;height:104px}
+[data-size="medium"] .gauge svg{width:82px;height:82px}
+
+.gauge .lbl{position:absolute;display:flex;flex-direction:column;align-items:center;gap:1px}
+.gauge .lbl .pct{font-weight:700;letter-spacing:-.02em}
+[data-size="small"] .gauge .lbl .pct{font-size:22px}
+[data-size="medium"] .gauge .lbl .pct{font-size:18px}
+.gauge .lbl .sub{font-size:9.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)}
+
+.ringCol .amt{font-size:10.5px;color:var(--text-2);font-weight:600;margin-top:1px}
+
+.foot{flex:0 0 auto;display:flex;align-items:center;justify-content:center;gap:6px;
+  color:var(--text-2);font-size:12px;font-weight:600;margin-top:10px}
+.foot .ic{display:inline-flex;width:12px;color:var(--text-3)}
+.foot .ic svg{width:12px;display:block}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from dogfood/dashboard/index.html and
+   dogfood/gallery.html. Every later bundled template starts
+   from this same block, adding whatever icons/helpers it needs.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* icons — Font Awesome free solid, inlined (CSP-safe, currentColor) */
+var ICON={
+clock:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M256 0a256 256 0 1 1 0 512 256 256 0 1 1 0-512zM232 120l0 136c0 8 4 15.5 10.7 20l96 64c11 7.4 25.9 4.4 33.3-6.7s4.4-25.9-6.7-33.3L280 243.2 280 120c0-13.3-10.7-24-24-24s-24 10.7-24 24z"/></svg>'
+};
+
+function ring(pct,col,r){
+  var C=2*Math.PI*r, off=C*(1-pct);
+  return '<circle cx="0" cy="0" r="'+r+'" fill="none" stroke="var(--track)" stroke-width="7"/>'+
+    '<circle cx="0" cy="0" r="'+r+'" fill="none" stroke="'+col+'" stroke-width="7" stroke-linecap="round" stroke-dasharray="'+C.toFixed(1)+'" stroke-dashoffset="'+off.toFixed(1)+'" transform="rotate(-90)"/>';
+}
+
+/* ============================================================
+   Template logic — system (Mac stats via the "system" provider)
+   ============================================================ */
+function clamp01(x){ return Math.max(0, Math.min(1, x||0)); }
+
+function gaugeColor(pct){ return pct<0.7?'var(--green)': pct<0.85?'var(--orange)':'var(--red)'; }
+
+/// bytes → "N,N" GiB string, French decimal comma.
+function fmtGB(bytes){
+  var gb=(bytes||0)/1073741824;
+  return gb.toFixed(1).replace('.', ',');
+}
+
+/// seconds → "Nj Nh" (≥1 day) or "Nh Nm" otherwise.
+function fmtUptime(sec){
+  sec=Math.max(0, Math.floor(sec||0));
+  var days=Math.floor(sec/86400);
+  var hours=Math.floor((sec%86400)/3600);
+  var mins=Math.floor((sec%3600)/60);
+  return days>0 ? (days+'j '+hours+'h') : (hours+'h '+mins+'m');
+}
+
+function fmtClock(iso){
+  var dt=iso?new Date(iso):new Date();
+  if(isNaN(dt.getTime())) dt=new Date();
+  return pad2(dt.getHours())+':'+pad2(dt.getMinutes());
+}
+
+function ringOnly(pct,label){
+  var col=gaugeColor(pct);
+  var pctLabel=Math.round(pct*100)+'%';
+  return '<div class="gauge"><svg viewBox="-40 -40 80 80">'+ring(pct,col,34)+'</svg>'+
+    '<div class="lbl"><span class="pct tnum">'+pctLabel+'</span><span class="sub">'+esc(label)+'</span></div></div>';
+}
+function gauge(pct,label,sub){
+  return '<div class="ringCol">'+ringOnly(pct,label)+'<div class="amt tnum">'+esc(sub)+'</div></div>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'small';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{};
+  var el=document.getElementById('root');
+  el.className=(bw&&bw.stale?'stale':'');
+
+  var sys=d.sys;
+  if(!sys || typeof sys!=='object'){
+    el.innerHTML='<div class="wrap"><div class="muted">Système indisponible</div></div>';
+    return;
+  }
+
+  var memTotal=Number(sys.memTotal)||0, memFree=Number(sys.memFree)||0;
+  var memPct=memTotal>0?clamp01((memTotal-memFree)/memTotal):0;
+
+  var diskTotal=Number(sys.diskTotal)||0, diskFree=Number(sys.diskFree)||0;
+  var diskPct=diskTotal>0?clamp01((diskTotal-diskFree)/diskTotal):0;
+
+  var uptime=fmtUptime(Number(sys.uptime));
+  var clock=fmtClock(sys.datetime);
+
+  var hd='<div class="hd"><span class="ttl">Système</span><span class="cur tnum">'+esc(clock)+'</span></div>';
+
+  var ringsHtml;
+  if(fam==='small'){
+    ringsHtml='<div class="ringCol">'+ringOnly(memPct,'RAM')+'</div>';
+  } else {
+    ringsHtml=gauge(memPct,'RAM', fmtGB(memTotal-memFree)+' / '+fmtGB(memTotal)+' Go')+
+      gauge(diskPct,'Disque', fmtGB(diskFree)+' Go libres');
+  }
+
+  var foot='<div class="foot"><span class="ic">'+ICON.clock+'</span><span class="tnum">'+esc(uptime)+'</span></div>';
+
+  el.innerHTML='<div class="wrap">'+hd+'<div class="rings">'+ringsHtml+'</div>'+foot+'</div>';
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
+</script></body></html>
