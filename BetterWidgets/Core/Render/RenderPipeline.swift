@@ -71,18 +71,42 @@ final class RenderPipeline {
             state.lastFetchAt = Date()
             state.stale = !fetch.failedKeys.isEmpty
 
-            // Render both themes before writing anything: if dark fails after light
-            // succeeded, we must not leave a half-updated pair — the previous PNGs
-            // (both themes) stay untouched on any render failure.
-            var renders: [(theme: Theme, png: Data)] = []
-            for theme in [Theme.light, Theme.dark] {
-                let context = RenderContext(params: params, data: data,
-                                            size: instance.size, theme: theme, stale: state.stale)
-                let png = try await engine.render(html: html, baseURL: baseURL, context: context)
-                renders.append((theme, png))
-            }
-            for render in renders {
-                try shared.writeRender(render.png, instanceId: instance.id, theme: render.theme)
+            // Render everything before writing anything: a later render failing must not
+            // leave a half-updated set — the previous PNGs stay untouched on any failure.
+            // For a rotating template, `slides` frames per theme are pre-rendered so the
+            // widget's timeline can advance through them without re-invoking the engine.
+            if let rotation = manifest.rotation, rotation.slides >= 2 {
+                var renders: [(slide: Int, theme: Theme, png: Data)] = []
+                for slide in 0..<rotation.slides {
+                    for theme in [Theme.light, Theme.dark] {
+                        let context = RenderContext(params: params, data: data, size: instance.size,
+                                                    theme: theme, stale: state.stale, slide: slide)
+                        let png = try await engine.render(html: html, baseURL: baseURL, context: context)
+                        renders.append((slide, theme, png))
+                    }
+                }
+                for render in renders {
+                    try shared.writeRender(render.png, instanceId: instance.id, slide: render.slide, theme: render.theme)
+                }
+                // The app/tray preview reads the primary PNG: point it at slide 0.
+                for render in renders where render.slide == 0 {
+                    try shared.writeRender(render.png, instanceId: instance.id, theme: render.theme)
+                }
+                state.slideCount = rotation.slides
+                state.slideInterval = rotation.interval
+            } else {
+                var renders: [(theme: Theme, png: Data)] = []
+                for theme in [Theme.light, Theme.dark] {
+                    let context = RenderContext(params: params, data: data,
+                                                size: instance.size, theme: theme, stale: state.stale)
+                    let png = try await engine.render(html: html, baseURL: baseURL, context: context)
+                    renders.append((theme, png))
+                }
+                for render in renders {
+                    try shared.writeRender(render.png, instanceId: instance.id, theme: render.theme)
+                }
+                state.slideCount = nil
+                state.slideInterval = nil
             }
             state.lastRenderAt = Date()
             state.lastError = nil

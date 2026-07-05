@@ -47,4 +47,29 @@ final class ManifestTests: XCTestCase {
     func testGarbageJSONGivesReadableError() {
         XCTAssertThrowsError(try TemplateManifest.validated(from: Data("not json".utf8)))
     }
+
+    // MARK: Rotation
+
+    func testRotationAbsentIsNil() throws {
+        XCTAssertNil(try TemplateManifest.validated(from: manifestJSON()).rotation)
+    }
+
+    func testRotationParses() throws {
+        let json = """
+        { "id": "x", "name": "x", "version": "1", "sizes": ["large"], "refresh": 900,
+          "rotation": { "slides": 4, "interval": 30 }, "params": [], "sources": [] }
+        """.data(using: .utf8)!
+        let m = try TemplateManifest.validated(from: json)
+        XCTAssertEqual(m.rotation, RotationSpec(slides: 4, interval: 30))
+    }
+
+    func testInvalidRotationRejected() {
+        let json = """
+        { "id": "x", "name": "x", "version": "1", "sizes": ["large"], "refresh": 900,
+          "rotation": { "slides": 0, "interval": 30 }, "params": [], "sources": [] }
+        """.data(using: .utf8)!
+        XCTAssertThrowsError(try TemplateManifest.validated(from: json)) {
+            XCTAssertEqual($0 as? ManifestError, .invalidRotation)
+        }
+    }
 }

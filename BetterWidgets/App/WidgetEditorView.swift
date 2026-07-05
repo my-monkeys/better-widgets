@@ -17,7 +17,8 @@ struct WidgetEditorView: View {
         self.onClose = onClose
         let manifest = (try? state.templates.manifest(id: instance.templateId))
             ?? TemplateManifest(id: instance.templateId, name: instance.name, version: "1",
-                                sizes: [instance.size], refresh: 60, params: [], sources: [], links: nil)
+                                sizes: [instance.size], refresh: 60, params: [], sources: [], links: nil,
+                                rotation: nil)
         _model = StateObject(wrappedValue: WidgetEditorModel(instance: instance, manifest: manifest,
                                                              secrets: state.secrets))
     }

@@ -22,8 +22,26 @@ struct RenderProvider<Intent: WidgetConfigurationIntent>: AppIntentTimelineProvi
     }
 
     func timeline(for configuration: Intent, in context: Context) async -> Timeline<RenderEntry> {
-        // Single entry, .never: the app drives reloads via WidgetCenter.
-        Timeline(entries: [RenderEntry(date: .now, instanceId: instanceId(configuration))], policy: .never)
+        let id = instanceId(configuration)
+        // Rotating template: fan out one entry per slide over the next window so WidgetKit
+        // advances the display itself (no reload budget spent per slide). The app's periodic
+        // re-render + reload regenerates this with fresh data. Non-rotating: single entry,
+        // .never — the app drives reloads via WidgetCenter.
+        if let id {
+            let state = SharedStore.appGroup().loadState(instanceId: id)
+            if let count = state.slideCount, count >= 2,
+               let interval = state.slideInterval, interval >= 1 {
+                let now = Date.now
+                let displaySpan = 15 * 60
+                let entryCount = min(90, max(count, displaySpan / interval))
+                let entries = (0..<entryCount).map { k in
+                    RenderEntry(date: now.addingTimeInterval(Double(k * interval)),
+                                instanceId: id, slide: k % count)
+                }
+                return Timeline(entries: entries, policy: .atEnd)
+            }
+        }
+        return Timeline(entries: [RenderEntry(date: .now, instanceId: id)], policy: .never)
     }
 }
 

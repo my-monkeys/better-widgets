@@ -7,6 +7,16 @@ enum ManifestError: Error, Equatable {
     case duplicateParamKey(String)
     case duplicateSourceKey(String)
     case unknownSourceType(String)
+    case invalidRotation
+}
+
+/// Opt-in slide rotation. A template with `rotation` renders `slides` pre-rendered frames
+/// (indexed via `window.BW.slide`); the widget extension advances through them every
+/// `interval` seconds via a multi-entry timeline, so the desktop widget rotates on its own
+/// without spending WidgetKit's throttled reload budget on every slide change.
+struct RotationSpec: Codable, Equatable {
+    let slides: Int
+    let interval: Int   // seconds each slide is shown
 }
 
 enum ParamType: String, Codable, Equatable {
@@ -46,6 +56,7 @@ struct TemplateManifest: Codable, Equatable {
     let params: [ParamSpec]
     let sources: [SourceSpec]
     let links: [LinkSpec]?
+    let rotation: RotationSpec?
 
     static func validated(from data: Data) throws -> TemplateManifest {
         let manifest: TemplateManifest
@@ -64,6 +75,9 @@ struct TemplateManifest: Codable, Equatable {
         for s in manifest.sources {
             guard sourceKeys.insert(s.key).inserted else { throw ManifestError.duplicateSourceKey(s.key) }
             guard SourceSpec.knownTypes.contains(s.type) else { throw ManifestError.unknownSourceType(s.type) }
+        }
+        if let rotation = manifest.rotation {
+            guard rotation.slides >= 1, rotation.interval >= 1 else { throw ManifestError.invalidRotation }
         }
         return manifest
     }

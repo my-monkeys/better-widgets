@@ -4,6 +4,7 @@ import WidgetKit
 struct RenderEntry: TimelineEntry {
     let date: Date
     let instanceId: UUID?
+    var slide: Int? = nil
 }
 
 struct WidgetRenderView: View {
@@ -35,7 +36,11 @@ struct WidgetRenderView: View {
 
     private func loadImage(id: UUID) -> NSImage? {
         let theme: Theme = colorScheme == .dark ? .dark : .light
-        let url = SharedStore.appGroup().renderURL(instanceId: id, theme: theme)
-        return NSImage(contentsOf: url)
+        let store = SharedStore.appGroup()
+        if let slide = entry.slide,
+           let image = NSImage(contentsOf: store.renderURL(instanceId: id, slide: slide, theme: theme)) {
+            return image
+        }
+        return NSImage(contentsOf: store.renderURL(instanceId: id, theme: theme))
     }
 }

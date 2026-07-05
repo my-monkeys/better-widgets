@@ -61,6 +61,7 @@ final class TemplateEditorModel: ObservableObject {
         case .duplicateParamKey(let k): return "Clé de paramètre en double : \(k)."
         case .duplicateSourceKey(let k): return "Clé de source en double : \(k)."
         case .unknownSourceType(let t): return "Type de source inconnu : \(t)."
+        case .invalidRotation: return "« rotation » : slides et interval doivent être ≥ 1."
         }
     }
 }

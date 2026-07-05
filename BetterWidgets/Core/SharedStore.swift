@@ -46,6 +46,15 @@ final class SharedStore {
         try png.write(to: renderURL(instanceId: instanceId, theme: theme), options: .atomic)
     }
 
+    /// Per-slide render, for rotating templates (see RotationSpec).
+    func renderURL(instanceId: UUID, slide: Int, theme: Theme) -> URL {
+        rendersURL.appendingPathComponent("\(instanceId.uuidString)-s\(slide)-\(theme.rawValue).png")
+    }
+
+    func writeRender(_ png: Data, instanceId: UUID, slide: Int, theme: Theme) throws {
+        try png.write(to: renderURL(instanceId: instanceId, slide: slide, theme: theme), options: .atomic)
+    }
+
     // MARK: State
 
     func loadState(instanceId: UUID) -> InstanceState {
@@ -64,15 +73,15 @@ final class SharedStore {
 
     // MARK: Removal
 
-    /// Deletes the two render PNGs and the state file for an instance. No-op if absent.
+    /// Deletes every render PNG (primary + any per-slide frames) and the state file for an
+    /// instance. No-op if absent.
     func removeInstance(id: UUID) {
-        let urls = [
-            renderURL(instanceId: id, theme: .light),
-            renderURL(instanceId: id, theme: .dark),
-            stateURL.appendingPathComponent("\(id.uuidString).json"),
-        ]
-        for url in urls {
+        let prefix = id.uuidString
+        let renders = (try? FileManager.default.contentsOfDirectory(at: rendersURL,
+                                                                     includingPropertiesForKeys: nil)) ?? []
+        for url in renders where url.lastPathComponent.hasPrefix(prefix) {
             try? FileManager.default.removeItem(at: url)
         }
+        try? FileManager.default.removeItem(at: stateURL.appendingPathComponent("\(id.uuidString).json"))
     }
 }
