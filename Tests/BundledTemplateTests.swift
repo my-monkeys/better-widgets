@@ -214,4 +214,10 @@ final class BundledTemplateTests: XCTestCase {
         ]]
         try await assertRenders("github", data: data)
     }
+
+    @MainActor
+    func testGithubRendersFallback() async throws {
+        try await assertRenders("github", data: ["gh": ["message": "Not Found"]])
+        try await assertRenders("github", data: [:])
+    }
 }
