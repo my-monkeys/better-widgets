@@ -28,12 +28,16 @@ enum BundledTemplates {
 final class BundledTemplateTests: XCTestCase {
 
     /// Renders `id` for every declared size × light/dark, asserting exact @2x dimensions.
+    /// `extra` overrides individual keys on top of the manifest's default params, so a
+    /// template whose render branches on params (e.g. `home`'s `entities` filter) can be
+    /// exercised along a non-default path.
     @MainActor
-    func assertRenders(_ id: String, data: [String: Any]) async throws {
+    func assertRenders(_ id: String, data: [String: Any], params extra: [String: String]? = nil) async throws {
         let manifest = try BundledTemplates.manifest(id)
         let html = try BundledTemplates.html(id)
         let dir = BundledTemplates.dir.appendingPathComponent(id)
-        let params = BundledTemplates.defaultParams(manifest)
+        var params = BundledTemplates.defaultParams(manifest)
+        if let extra { params.merge(extra) { _, new in new } }
         for size in manifest.sizes {
             for theme in [Theme.light, .dark] {
                 let ctx = RenderContext(params: params, data: data, size: size, theme: theme, stale: false)
@@ -177,5 +181,23 @@ final class BundledTemplateTests: XCTestCase {
             ["entity_id": "light.living", "state": "on", "attributes": ["friendly_name": "Salon"]]
         ]]
         try await assertRenders("home", data: data)
+    }
+
+    @MainActor
+    func testHomeRendersChips() async throws {
+        // Default `entities` param never selects a light — override it so `light.living`
+        // is picked, exercising the chip path (bulb icon, on/off) instead of tiles only.
+        let data: [String: Any] = ["ha": [
+            ["entity_id": "sensor.temperature", "state": "21.5", "attributes": ["unit_of_measurement": "°C", "friendly_name": "Salon"]],
+            ["entity_id": "light.living", "state": "on", "attributes": ["friendly_name": "Salon"]]
+        ]]
+        try await assertRenders("home", data: data, params: ["entities": "sensor.temperature,light.living"])
+    }
+
+    @MainActor
+    func testHomeRendersUnreachable() async throws {
+        // No usable HA data (missing/null `ha`) must fall back to the "Connecte ton Home
+        // Assistant" layout + stale marker, not throw or render an empty widget.
+        try await assertRenders("home", data: ["ha": NSNull()])
     }
 }

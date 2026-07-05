@@ -105,11 +105,14 @@ var TILE_COLOR={ temp:'var(--orange)', humidity:'var(--accent)', energy:'var(--p
 
 function kindOf(unit){ return TILE_KIND[unit]||'other'; }
 
-/* French-locale comma decimals, unit glued for degrees ("21,5°C") else spaced ("48 %"). */
+/* French-locale comma decimals, unit glued for degrees ("21,5°C") else spaced ("48 %").
+   Unit is only appended when the state is actually numeric — a non-numeric state
+   (e.g. "unavailable") is shown alone, never glued to a stale unit. */
 function fmtValue(state,unit){
   var num=parseFloat(state);
-  var display=isNaN(num)?String(state==null?'—':state):(Math.round(num*10)/10).toString().replace('.',',');
-  if(!unit) return display;
+  var isNum=isFinite(num);
+  var display=isNum?(Math.round(num*10)/10).toString().replace('.',','):String(state==null?'—':state);
+  if(!unit || !isNum) return display;
   return (unit.charAt(0)==='°') ? display+unit : display+' '+unit;
 }
 
@@ -163,6 +166,9 @@ function render(bw){
     if(attrs.unit_of_measurement){ tiles.push(item); }
     else if(item.state==='on'||item.state==='off'){ chips.push(item); }
   });
+  /* Entities exist and are selected, but none match either shape (tile or chip) —
+     same empty-body risk as the "nothing picked" case above, same fallback. */
+  if(!tiles.length && !chips.length){ fallback(); return; }
 
   var isLarge=fam==='large';
   tiles=tiles.slice(0, isLarge?8:4);
