@@ -10,7 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 @main
 struct BetterWidgetsApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @StateObject private var state = AppState()
+    @StateObject private var state = AppState.shared
     @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
@@ -29,7 +29,6 @@ struct BetterWidgetsApp: App {
     }
 
     init() {
-        let state = _state
-        AppDelegate.onLaunch = { Task { @MainActor in state.wrappedValue.bootstrap() } }
+        AppDelegate.onLaunch = { Task { @MainActor in AppState.shared.bootstrap() } }
     }
 }

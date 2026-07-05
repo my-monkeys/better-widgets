@@ -25,6 +25,13 @@ final class AppState: ObservableObject {
         self.scheduler = scheduler
     }
 
+    /// The single app-wide instance. The menu-bar app bootstraps and renders from a place
+    /// (AppDelegate) that must reference the *same* object the SwiftUI scenes observe —
+    /// reading `_state.wrappedValue` from `App.init` can spin up a throwaway AppState that
+    /// bootstraps and renders once, then deallocates (killing its scheduler timer), while the
+    /// real StateObject the views read never bootstraps. A shared singleton removes the ambiguity.
+    static let shared = AppState()
+
     /// Real wiring used by the app.
     convenience init() {
         let shared = SharedStore.appGroup()
