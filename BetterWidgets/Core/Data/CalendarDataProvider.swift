@@ -37,7 +37,9 @@ struct CalendarDataProvider: DataProvider {
     let fetcher: EventFetching
 
     func fetch(spec: SourceSpec, paramValues: [String: String]) async throws -> Any {
-        let days = spec.config?["days"].flatMap(Int.init) ?? 7
+        // Substitute {{param}} first: the manifest passes `days: "{{days}}"`, so a raw Int.init
+        // on the un-substituted value would always fail and silently fall back to 7 (dead control).
+        let days = spec.config?["days"].map { substituteParams($0, params: paramValues) }.flatMap(Int.init) ?? 7
         let events = try await fetcher.upcomingEvents(within: days)
         let iso = ISO8601DateFormatter()
         let mapped: [[String: Any]] = events.map { event in
