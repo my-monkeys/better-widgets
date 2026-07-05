@@ -1,0 +1,15 @@
+{
+  "id": "github",
+  "name": "GitHub",
+  "version": "1.0.0",
+  "sizes": ["small", "medium"],
+  "refresh": 1800,
+  "params": [
+    { "key": "owner", "type": "string", "label": "Owner", "default": "my-monkeys" },
+    { "key": "repo", "type": "string", "label": "Repo", "default": "better-widgets" }
+  ],
+  "sources": [
+    { "key": "gh", "type": "json",
+      "config": { "url": "https://api.github.com/repos/{{owner}}/{{repo}}", "secret.Authorization": "Bearer <token>" } }
+  ]
+}

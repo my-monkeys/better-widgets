@@ -200,4 +200,18 @@ final class BundledTemplateTests: XCTestCase {
         // Assistant" layout + stale marker, not throw or render an empty widget.
         try await assertRenders("home", data: ["ha": NSNull()])
     }
+
+    func testGithubManifestValid() throws {
+        let m = try BundledTemplates.manifest("github")
+        XCTAssertTrue((m.sources.first?.config?["url"] ?? "").hasPrefix("https://api.github.com/"))
+    }
+
+    @MainActor
+    func testGithubRenders() async throws {
+        let data: [String: Any] = ["gh": [
+            "full_name": "my-monkeys/better-widgets", "stargazers_count": 42, "forks_count": 3,
+            "open_issues_count": 5, "pushed_at": "2026-07-05T10:00:00Z", "description": "Widgets macOS depuis du HTML"
+        ]]
+        try await assertRenders("github", data: data)
+    }
 }
