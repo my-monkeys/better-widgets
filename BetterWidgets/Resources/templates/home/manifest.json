@@ -1,0 +1,15 @@
+{
+  "id": "home",
+  "name": "Maison",
+  "version": "1.0.0",
+  "sizes": ["medium", "large"],
+  "refresh": 120,
+  "params": [
+    { "key": "base", "type": "string", "label": "Hôte Home Assistant", "default": "homeassistant.local:8123" },
+    { "key": "entities", "type": "string", "label": "Entités (ids séparés par ,)", "default": "sensor.temperature,sensor.humidity" }
+  ],
+  "sources": [
+    { "key": "ha", "type": "json",
+      "config": { "url": "http://{{base}}/api/states", "secret.Authorization": "Bearer <token>" } }
+  ]
+}

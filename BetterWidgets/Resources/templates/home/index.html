@@ -1,0 +1,194 @@
+<!doctype html><html><head><meta charset="utf-8"><style>
+/* ============================================================
+   DA starter — reset + light/dark tokens.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+*{margin:0;box-sizing:border-box}
+html,body{width:100%;height:100%;overflow:hidden;font-family:-apple-system,"SF Pro Display",sans-serif}
+:root{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+    --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+    --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+    --track:#303236;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#121316; --surface:#1E1F22; --surface-2:#26282C; --border:#303236;
+  --text:#E8EAED; --text-2:#9AA0A6; --text-3:#6B7280;
+  --accent:#8AB4F8; --green:#81C995; --orange:#FCC934; --red:#F28B82; --purple:#C58AF9;
+  --track:#303236;
+}
+:root[data-theme="light"]{
+  --bg:#F8F9FA; --surface:#FFFFFF; --surface-2:#F1F3F4; --border:#E8EAED;
+  --text:#202124; --text-2:#5F6368; --text-3:#9AA0A6;
+  --accent:#1A73E8; --green:#34A853; --orange:#F29900; --red:#EA4335; --purple:#A142F4;
+  --track:#E8EAED;
+}
+body{background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+.tnum{font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+/* stale marker — fixed top-right dot, toggled via the "stale" class on #root */
+.stale::after{content:"";position:fixed;top:6px;right:6px;width:6px;height:6px;
+  border-radius:50%;background:var(--orange);opacity:.85}
+
+/* ============================================================
+   Template layout — home (Home Assistant /api/states)
+   ============================================================ */
+#root{width:100%;height:100%}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:14px 16px}
+[data-size="medium"] .wrap{padding:10px 14px}
+
+.hd{flex:0 0 auto;margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.hd .i{display:inline-flex;color:var(--accent)}
+.hd .i svg{width:13px;height:13px;display:block}
+.hd .ttl{font-size:12.5px;font-weight:600;color:var(--text-2);letter-spacing:-.01em;text-transform:uppercase}
+[data-size="medium"] .hd{margin-bottom:5px}
+
+.body{flex:1 1 auto;min-height:0;display:flex;flex-direction:column;justify-content:center;gap:8px;overflow:hidden}
+
+.tiles{flex:0 0 auto;display:grid;grid-template-columns:1fr 1fr;gap:8px}
+[data-size="medium"] .tiles{display:flex;gap:6px}
+
+.tile{background:var(--surface-2);border-radius:12px;padding:10px 11px;min-width:0}
+[data-size="medium"] .tile{flex:1 1 0;padding:8px 9px;border-radius:10px}
+.tile .i{display:inline-flex;width:15px;height:15px}
+.tile .i svg{width:15px;height:15px;display:block}
+.tile .val{font-size:19px;font-weight:700;margin-top:5px;line-height:1.05;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+[data-size="medium"] .tile .val{font-size:15px;margin-top:4px}
+.tile .lbl{font-size:9.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--text-3);margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+.chips{flex:0 0 auto;display:flex;flex-wrap:wrap;gap:6px}
+.chip{flex:0 0 auto;display:inline-flex;align-items:center;gap:5px;background:var(--surface-2);
+  border-radius:9px;padding:5px 9px;font-size:11px;font-weight:600;max-width:100%;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip .i{display:inline-flex;width:10px;flex:0 0 auto}
+.chip .i svg{width:10px;height:10px;display:block}
+
+.muted{flex:1 1 auto;display:flex;align-items:center;justify-content:center;
+  color:var(--text-3);font-size:12px;text-align:center;padding:0 8px}
+</style></head><body>
+<div id="root"></div>
+<script>
+"use strict";
+
+/* ============================================================
+   DA starter — script helpers.
+   Copied verbatim from BetterWidgets/Resources/templates/weather/index.html.
+   ============================================================ */
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function pad2(n){ return String(n).padStart(2,'0'); }
+
+/* icons — Font Awesome free solid, inlined (CSP-safe, currentColor); from dogfood/gallery.html */
+var ICON={
+house:'<svg viewBox="0 0 512 512"><path fill="currentColor" d="M277.8 8.6c-12.3-11.4-31.3-11.4-43.5 0l-224 208c-9.6 9-12.8 22.9-8 35.1S18.8 272 32 272l16 0 0 176c0 35.3 28.7 64 64 64l288 0c35.3 0 64-28.7 64-64l0-176 16 0c13.2 0 25-8.1 29.8-20.3s1.6-26.2-8-35.1l-224-208zM240 320l32 0c26.5 0 48 21.5 48 48l0 96-128 0 0-96c0-26.5 21.5-48 48-48z"/></svg>',
+temp:'<svg viewBox="0 0 320 512"><path fill="currentColor" d="M160 0C107 0 64 43 64 96l0 164.7C34.5 287 16 325.4 16 368 16 447.5 80.5 512 160 512s144-64.5 144-144c0-42.6-18.5-81-48-107.3L256 96c0-53-43-96-96-96zm64 368c0 35.3-28.7 64-64 64s-64-28.7-64-64c0-26.9 16.5-49.9 40-59.3l0-92.7c0-13.3 10.7-24 24-24s24 10.7 24 24l0 92.7c23.5 9.5 40 32.5 40 59.3z"/></svg>',
+drop:'<svg viewBox="0 0 384 512"><path fill="currentColor" d="M192 512C86 512 0 426 0 320 0 228.8 130.2 45.9 166.6-3.5 172.5-11.5 181.8-16 191.8-16l.4 0c10 0 19.3 4.5 25.2 12.5 36.4 49.4 166.6 232.3 166.6 323.5 0 106-86 192-192 192zM112 312c0-13.3-10.7-24-24-24s-24 10.7-24 24c0 75.1 60.9 136 136 136 13.3 0 24-10.7 24-24s-10.7-24-24-24c-48.6 0-88-39.4-88-88z"/></svg>',
+bolt:'<svg viewBox="0 0 448 512"><path fill="currentColor" d="M338.8-9.9c11.9 8.6 16.3 24.2 10.9 37.8L271.3 224 416 224c13.5 0 25.5 8.4 30.1 21.1s.7 26.9-9.6 35.5l-288 240c-11.3 9.4-27.4 9.9-39.3 1.3s-16.3-24.2-10.9-37.8L176.7 288 32 288c-13.5 0-25.5-8.4-30.1-21.1s-.7-26.9 9.6-35.5l288-240c11.3-9.4 27.4-9.9 39.3-1.3z"/></svg>',
+bulb:'<svg viewBox="0 0 384 512"><path fill="currentColor" d="M292.9 384c7.3-22.3 21.9-42.5 38.4-59.9 32.7-34.4 52.7-80.9 52.7-132.1 0-106-86-192-192-192S0 86 0 192c0 51.2 20 97.7 52.7 132.1 16.5 17.4 31.2 37.6 38.4 59.9l201.7 0zM288 432l-192 0 0 16c0 44.2 35.8 80 80 80l32 0c44.2 0 80-35.8 80-80l0-16zM184 112c-39.8 0-72 32.2-72 72 0 13.3-10.7 24-24 24s-24-10.7-24-24c0-66.3 53.7-120 120-120 13.3 0 24 10.7 24 24s-10.7 24-24 24z"/></svg>'
+};
+
+/* ============================================================
+   Template logic — home (Home Assistant /api/states)
+   `data.ha` = HA /api/states response, filtered to params.entities.
+   ============================================================ */
+var TILE_KIND={ '°C':'temp', '°F':'temp', '%':'humidity', 'W':'energy', 'kW':'energy', 'Wh':'energy', 'kWh':'energy', 'MWh':'energy' };
+var TILE_ICON={ temp:'temp', humidity:'drop', energy:'bolt', other:'house' };
+var TILE_COLOR={ temp:'var(--orange)', humidity:'var(--accent)', energy:'var(--purple)', other:'var(--text-2)' };
+
+function kindOf(unit){ return TILE_KIND[unit]||'other'; }
+
+/* French-locale comma decimals, unit glued for degrees ("21,5°C") else spaced ("48 %"). */
+function fmtValue(state,unit){
+  var num=parseFloat(state);
+  var display=isNaN(num)?String(state==null?'—':state):(Math.round(num*10)/10).toString().replace('.',',');
+  if(!unit) return display;
+  return (unit.charAt(0)==='°') ? display+unit : display+' '+unit;
+}
+
+function tileHtml(item){
+  var attrs=item.attributes||{};
+  var unit=attrs.unit_of_measurement;
+  var kind=kindOf(unit);
+  var label=attrs.friendly_name||item.entity_id;
+  return '<div class="tile"><span class="i" style="color:'+TILE_COLOR[kind]+'">'+ICON[TILE_ICON[kind]]+'</span>'+
+    '<div class="val tnum">'+esc(fmtValue(item.state,unit))+'</div>'+
+    '<div class="lbl">'+esc(label)+'</div></div>';
+}
+
+function chipHtml(item){
+  var attrs=item.attributes||{};
+  var on=item.state==='on';
+  var label=attrs.friendly_name||item.entity_id;
+  return '<span class="chip"><span class="i" style="color:'+(on?'var(--green)':'var(--text-3)')+'">'+ICON.bulb+'</span>'+esc(label)+'</span>';
+}
+
+function render(bw){
+  var root=document.documentElement;
+  if(bw && bw.theme) root.setAttribute('data-theme', bw.theme);
+  var fam=(bw&&bw.size&&bw.size.family)||'large';
+  root.setAttribute('data-size', fam);
+  var d=(bw&&bw.data)||{}, params=(bw&&bw.params)||{};
+  var el=document.getElementById('root');
+
+  var hd='<div class="hd"><span class="i">'+ICON.house+'</span><span class="ttl">Maison</span></div>';
+
+  function fallback(){
+    /* No usable HA data (missing/__denied/error) — flag it visually like status.js
+       does for an unreachable endpoint, regardless of the pipeline's own `stale` flag. */
+    el.className='stale';
+    el.innerHTML='<div class="wrap">'+hd+'<div class="muted">Connecte ton Home Assistant</div></div>';
+  }
+
+  var raw=d.ha;
+  var states=Array.isArray(raw)?raw:null;
+  if(!states){ fallback(); return; }
+
+  var byId={};
+  states.forEach(function(s){ if(s && s.entity_id) byId[s.entity_id]=s; });
+  var wanted=String(params.entities||'').split(',').map(function(s){ return s.trim(); }).filter(Boolean);
+  var picked=wanted.map(function(id){ return byId[id]; }).filter(Boolean);
+  if(!picked.length){ fallback(); return; }
+
+  var tiles=[], chips=[];
+  picked.forEach(function(item){
+    var attrs=item.attributes||{};
+    if(attrs.unit_of_measurement){ tiles.push(item); }
+    else if(item.state==='on'||item.state==='off'){ chips.push(item); }
+  });
+
+  var isLarge=fam==='large';
+  tiles=tiles.slice(0, isLarge?8:4);
+  chips=chips.slice(0, isLarge?12:6);
+
+  el.className=(bw&&bw.stale?'stale':'');
+  var body='<div class="tiles">'+tiles.map(tileHtml).join('')+'</div>';
+  if(chips.length) body+='<div class="chips">'+chips.map(chipHtml).join('')+'</div>';
+  el.innerHTML='<div class="wrap">'+hd+'<div class="body">'+body+'</div></div>';
+
+  /* Entity counts are user-configurable and unbounded — trim against the real
+     measured layout (as in agenda/status.index.html) so nothing is ever half-clipped
+     by .body{overflow:hidden}. Chips are dropped first (least essential), tiles
+     as a last resort. */
+  var bodyEl=el.querySelector('.body');
+  function overflowing(){ return bodyEl && bodyEl.scrollHeight>bodyEl.clientHeight; }
+  var chipsEl=bodyEl && bodyEl.querySelector('.chips');
+  while(overflowing() && chipsEl && chipsEl.lastElementChild){
+    chipsEl.removeChild(chipsEl.lastElementChild);
+  }
+  if(chipsEl && !chipsEl.children.length){ chipsEl.remove(); }
+  var tilesEl=bodyEl && bodyEl.querySelector('.tiles');
+  while(overflowing() && tilesEl && tilesEl.lastElementChild){
+    tilesEl.removeChild(tilesEl.lastElementChild);
+  }
+}
+window.renderBW=render;
+if(window.BW) render(window.BW);
+</script></body></html>

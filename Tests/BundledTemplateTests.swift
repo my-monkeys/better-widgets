@@ -161,4 +161,21 @@ final class BundledTemplateTests: XCTestCase {
         // "Endpoint injoignable" layout + stale marker, not throw or render an empty widget.
         try await assertRenders("status", data: ["svc": [String: Any]()])
     }
+
+    func testHomeManifestValid() throws {
+        let m = try BundledTemplates.manifest("home")
+        let cfg = try XCTUnwrap(m.sources.first?.config)
+        XCTAssertNotNil(cfg["secret.Authorization"])
+        XCTAssertTrue((cfg["url"] ?? "").hasPrefix("http://"))
+    }
+
+    @MainActor
+    func testHomeRenders() async throws {
+        let data: [String: Any] = ["ha": [
+            ["entity_id": "sensor.temperature", "state": "21.5", "attributes": ["unit_of_measurement": "°C", "friendly_name": "Salon"]],
+            ["entity_id": "sensor.humidity", "state": "48", "attributes": ["unit_of_measurement": "%", "friendly_name": "Humidité"]],
+            ["entity_id": "light.living", "state": "on", "attributes": ["friendly_name": "Salon"]]
+        ]]
+        try await assertRenders("home", data: data)
+    }
 }
