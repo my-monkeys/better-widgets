@@ -133,4 +133,25 @@ final class BundledTemplateTests: XCTestCase {
     func testAgendaRendersDenied() async throws {
         try await assertRenders("agenda", data: ["cal": ["__denied": true]])
     }
+
+    func testStatusManifestValid() throws {
+        let m = try BundledTemplates.manifest("status")
+        XCTAssertEqual(m.sources.first?.type, "json")
+    }
+
+    @MainActor
+    func testStatusRendersArrayShape() async throws {
+        let data: [String: Any] = ["svc": [
+            ["name": "api", "up": true, "ms": 142],
+            ["name": "db", "up": true, "ms": 4],
+            ["name": "worker", "up": false]
+        ]]
+        try await assertRenders("status", data: data)
+    }
+
+    @MainActor
+    func testStatusRendersObjectShape() async throws {
+        let data: [String: Any] = ["svc": ["services": [["name": "web", "up": true, "ms": 30]]]]
+        try await assertRenders("status", data: data)
+    }
 }

@@ -1,0 +1,9 @@
+{
+  "id": "status", "name": "Services", "version": "1.0.0",
+  "sizes": ["medium", "large"], "refresh": 120,
+  "params": [
+    { "key": "url", "type": "url", "label": "Endpoint statut (JSON)", "default": "http://homeserver.local:3001/api/status" },
+    { "key": "title", "type": "string", "label": "Titre", "default": "Services" }
+  ],
+  "sources": [ { "key": "svc", "type": "json", "config": { "url": "{{url}}" } } ]
+}
