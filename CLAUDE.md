@@ -102,13 +102,14 @@ xcodegen generate && xcodebuild test -project BetterWidgets.xcodeproj -scheme Be
   -destination 'platform=macOS' -quiet
 ```
 
-121 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
+154 tests. En plus des suites précédentes (Manifest, Plan2Manifest, SharedStore, TemplateStore,
 RenderEngine, NavigationPolicy, TemplateAssetSchemeHandler, DataProvider, RSSDataProvider,
 RSSFeedParser, CalendarDataProvider, WeatherDataProvider, PermissionStore, RenderPipeline,
 Scheduler, WidgetSize, Smoke, DesignTokens, AppState, WidgetCardModel), Plan 3b-1 ajoute
 `KeychainStoreTests`, `SecretResolverTests`, `WidgetEditorModelTests` ; Plan 3b-2 ajoute
 `TemplateStoreWriteTests`, `TemplateEditorModelTests` ; Plan 3c ajoute `BWidgetArchiveTests`,
-`BWidgetImporterTests` (8, la surface d'import), `PermissionConsentModelTests`.
+`BWidgetImporterTests` (8, la surface d'import), `PermissionConsentModelTests` ; Plan 4a ajoute
+`BundledTemplateTests` (validation manifest + rendu `window.BW` mocké des 8 templates maison + bootstrap).
 Doit rester vert avant tout commit. Les vues SwiftUI n'ont pas de tests unitaires (gate = build vert
 + vérif réelle) ; la logique (CRUD, model, scheduler, store, tokens, secrets/resolver, éditeur) est testée.
 Secrets en test : toujours un `SecretBackingStore` mémoire, jamais le vrai Keychain.
