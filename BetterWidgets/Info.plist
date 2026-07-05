@@ -22,8 +22,17 @@
 	<string>1</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Better Widgets lit vos évènements à venir pour les afficher dans un widget.</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>Better Widgets se connecte à vos serveurs locaux (Home Assistant, dashboards auto-hébergés, Tailscale) pour afficher leurs données dans un widget.</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Better Widgets utilise votre position pour afficher la météo locale dans un widget.</string>
 	<key>NSRemindersFullAccessUsageDescription</key>

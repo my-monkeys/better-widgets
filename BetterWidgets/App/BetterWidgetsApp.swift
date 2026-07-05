@@ -30,6 +30,7 @@ struct BetterWidgetsApp: App {
             }
             Divider()
             Button("Tout rafraîchir") { state.refreshAll() }
+            Button("Réglages Réseau local…") { SystemSettings.openLocalNetwork() }
             Button("Quitter") { NSApp.terminate(nil) }
         }
     }

@@ -46,6 +46,7 @@ struct MyWidgetsView: View {
             }
         }
         .background(DesignTokens.background)
+        .safeAreaInset(edge: .bottom) { localNetworkHint }
         .confirmationDialog("Supprimer ce widget ?", isPresented: isPendingDeletePresented,
                             presenting: pendingDelete) { instance in
             Button("Supprimer « \(instance.name) »", role: .destructive) {
@@ -66,6 +67,29 @@ struct MyWidgetsView: View {
                 }
             }
         }
+    }
+
+    /// Self-hosted / LAN sources (Home Assistant, Tailscale, a home dashboard) render
+    /// "aucune data" until macOS is told to let this app onto the local network — a gate with
+    /// no in-app fix, only a settings deep-link. Kept always-visible and discreet so a user
+    /// staring at an empty widget has the answer one click away.
+    private var localNetworkHint: some View {
+        HStack(spacing: DesignTokens.Space.sm) {
+            Image(systemName: "wifi")
+                .foregroundStyle(DesignTokens.textSecondary)
+            Text("Un widget affiche « aucune data » depuis un serveur local (Home Assistant, dashboard, Tailscale) ?")
+                .font(.system(size: DesignTokens.FontSize.caption))
+                .foregroundStyle(DesignTokens.textSecondary)
+            Button("Autoriser le réseau local") { SystemSettings.openLocalNetwork() }
+                .buttonStyle(.link)
+                .font(.system(size: DesignTokens.FontSize.caption, weight: .semibold))
+                .tint(DesignTokens.accent)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, DesignTokens.Space.xxl)
+        .padding(.vertical, DesignTokens.Space.sm)
+        .background(.thinMaterial)
+        .overlay(alignment: .top) { Divider() }
     }
 
     private func templateRequiresConsent(_ instance: WidgetInstance) -> Bool {

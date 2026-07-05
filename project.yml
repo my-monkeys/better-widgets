@@ -45,6 +45,12 @@ targets:
         NSCalendarsFullAccessUsageDescription: "Better Widgets lit vos évènements à venir pour les afficher dans un widget."
         NSRemindersFullAccessUsageDescription: "Better Widgets lit vos rappels à venir pour les afficher dans un widget."
         NSLocationWhenInUseUsageDescription: "Better Widgets utilise votre position pour afficher la météo locale dans un widget."
+        NSLocalNetworkUsageDescription: "Better Widgets se connecte à vos serveurs locaux (Home Assistant, dashboards auto-hébergés, Tailscale) pour afficher leurs données dans un widget."
+        # http-to-private sources (self-hosted dashboards, Home Assistant, Tailscale CGNAT
+        # 100.64/10) need cleartext; NSAllowsLocalNetworking alone doesn't cover CGNAT.
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+          NSAllowsLocalNetworking: true
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: fr.my-monkey.BetterWidgets
