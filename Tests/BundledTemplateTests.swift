@@ -123,8 +123,8 @@ final class BundledTemplateTests: XCTestCase {
     @MainActor
     func testAgendaRenders() async throws {
         let data: [String: Any] = ["cal": ["events": [
-            ["title": "Sport", "start": "2026-07-07T12:00:00+02:00", "end": "2026-07-07T13:00:00+02:00", "allDay": false, "calendarColor": "green"],
-            ["title": "Concert", "start": "2026-07-07T20:00:00+02:00", "end": "2026-07-07T23:00:00+02:00", "allDay": false, "calendarColor": "blue"]
+            ["title": "Sport", "start": "2026-07-07T12:00:00+02:00", "end": "2026-07-07T13:00:00+02:00", "allDay": false],
+            ["title": "Concert", "start": "2026-07-07T20:00:00+02:00", "end": "2026-07-07T23:00:00+02:00", "allDay": false]
         ]]]
         try await assertRenders("agenda", data: data)
     }

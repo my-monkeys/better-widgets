@@ -83,10 +83,7 @@ function pad2(n){ return String(n).padStart(2,'0'); }
    Template logic — agenda (EventKit)
    ============================================================ */
 var DOW=['Dim','Lun','Mar','Mer','Jeu','Ven','Sam'];
-var COLOR_MAP={green:'var(--green)',blue:'var(--accent)',red:'var(--red)',
-  orange:'var(--orange)',yellow:'var(--orange)',purple:'var(--purple)'};
 
-function dotColor(name){ if(!name) return 'var(--accent)'; return COLOR_MAP[name]||name; }
 function isoDate(d){ return d.getFullYear()+'-'+pad2(d.getMonth()+1)+'-'+pad2(d.getDate()); }
 
 /* "AUJOURD’HUI" / "DEMAIN" for the next two calendar days, else "Lun 7". */
@@ -102,7 +99,7 @@ function eventRow(ev,isLarge){
   var start=new Date(ev.start);
   var time=ev.allDay?'∙':pad2(start.getHours())+':'+pad2(start.getMinutes());
   var loc=isLarge&&ev.location?'<div class="loc">'+esc(ev.location)+'</div>':'';
-  return '<div class="ev"><span class="dot" style="background:'+dotColor(ev.calendarColor)+'"></span>'+
+  return '<div class="ev"><span class="dot" style="background:var(--accent)"></span>'+
     '<span class="time tnum">'+time+'</span>'+
     '<div class="evb"><div class="title">'+esc(ev.title||'Sans titre')+'</div>'+loc+'</div></div>';
 }
@@ -149,6 +146,21 @@ function render(bw){
   });
 
   el.innerHTML='<div class="wrap">'+hd+'<div class="list">'+rows+'</div></div>';
+
+  /* Day headers (large only) add vertical cost the flat per-event cap above
+     doesn't account for: a calendar spread thin across many distinct days
+     (many .dayh) can still overflow .list even at the same event count as a
+     single busy day. Trim trailing rows against the real measured layout so
+     nothing is ever half-clipped by .list{overflow:hidden}. */
+  if(isLarge){
+    var list=el.querySelector('.list');
+    while(list && list.scrollHeight>list.clientHeight && list.lastElementChild){
+      list.removeChild(list.lastElementChild);
+    }
+    while(list && list.lastElementChild && list.lastElementChild.classList.contains('dayh')){
+      list.removeChild(list.lastElementChild);
+    }
+  }
 }
 window.renderBW=render;
 if(window.BW) render(window.BW);
