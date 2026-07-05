@@ -20,19 +20,12 @@ struct BetterWidgetsApp: App {
         .windowResizability(.contentMinSize)
 
         MenuBarExtra("Better Widgets", systemImage: "square.grid.2x2") {
-            Button("Ouvrir Better Widgets") {
+            TrayPanelView(state: state) {
                 NSApp.activate(ignoringOtherApps: true)
                 openWindow(id: "main")
             }
-            Divider()
-            ForEach(state.instances) { instance in
-                Text(state.statusLine(for: instance))
-            }
-            Divider()
-            Button("Tout rafraîchir") { state.refreshAll() }
-            Button("Réglages Réseau local…") { SystemSettings.openLocalNetwork() }
-            Button("Quitter") { NSApp.terminate(nil) }
         }
+        .menuBarExtraStyle(.window)
     }
 
     init() {
