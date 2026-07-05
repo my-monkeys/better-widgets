@@ -220,4 +220,12 @@ final class BundledTemplateTests: XCTestCase {
         try await assertRenders("github", data: ["gh": ["message": "Not Found"]])
         try await assertRenders("github", data: [:])
     }
+
+    func testExactlyTheEightTemplatesAreBundled() throws {
+        let dirs = (try? FileManager.default.contentsOfDirectory(at: BundledTemplates.dir, includingPropertiesForKeys: [.isDirectoryKey]))?
+            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+            .map { $0.lastPathComponent } ?? []
+        XCTAssertEqual(Set(dirs), Set(BundledTemplates.ids), "bundled template dirs must be exactly the 8 ids")
+        for id in BundledTemplates.ids { XCTAssertEqual(try BundledTemplates.manifest(id).id, id, "\(id) manifest.id mismatch") }
+    }
 }

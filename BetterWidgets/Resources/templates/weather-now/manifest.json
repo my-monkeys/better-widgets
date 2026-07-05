@@ -1,9 +1,0 @@
-{
-  "id": "weather-now",
-  "name": "Météo",
-  "version": "1.0.0",
-  "sizes": ["small", "medium"],
-  "refresh": 900,
-  "params": [{ "key": "city", "type": "string", "label": "Ville", "default": "Montpellier" }],
-  "sources": [{ "key": "w", "type": "weather", "config": { "city": "{{city}}" } }]
-}

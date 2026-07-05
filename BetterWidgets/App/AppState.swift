@@ -44,7 +44,7 @@ final class AppState: ObservableObject {
         }
         instances = shared.loadInstances()
         if instances.isEmpty {
-            let demo = WidgetInstance(id: UUID(), name: "Horloge", templateId: "hello-clock",
+            let demo = WidgetInstance(id: UUID(), name: "Système", templateId: "system",
                                       size: .small, paramValues: [:])
             instances = [demo]
             try? shared.saveInstances(instances)
